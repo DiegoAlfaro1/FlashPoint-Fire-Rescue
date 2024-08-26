@@ -8,11 +8,26 @@ GRID_HEIGHT = 6
 INITIAL_FIRE_LOCATIONS = [(2, 2), (2, 3), (3, 2),(3, 3),(3,4),(3,5),(4,4),(5,6),(5,7),(6,6)]
 POI_LOCATIONS = [(2, 4), (5, 8), (5, 1)]
 
+class Wall:
+    def __init__(self, cell1, cell2, orientation, state="intact"):
+        self.cell1 = cell1  # First cell
+        self.cell2 = cell2  # Second cell
+        self.orientation = orientation  # "horizontal" or "vertical"
+        self.state = state  # "intact" or "broken" or "damaged"
+        self.damage = 0
+
+class Door:
+    def __init__(self, cell1, cell2, orientation, state="closed"):
+        self.cell1 = cell1
+        self.cell2 = cell2
+        self.orientation = orientation
+        self.state = state
+
 class FlashPointModel(Model):
     def __init__(self, width=GRID_WIDTH, height=GRID_HEIGHT):
         self.grid = MultiGrid(width, height, torus=False)
         self.schedule = RandomActivation(self)
-        self.walls = {}
+        self.walls =[]
         self.doors = {}
         self.damage_markers = 0
         self.rescued_victims = 0
@@ -21,6 +36,7 @@ class FlashPointModel(Model):
         self.max_victims = 12
         self.max_false_alarms = 6 
         self.max_pois_onBoard = 3
+        self.running = True
 
         # Ambient variables
         self.fire = set()
@@ -46,15 +62,16 @@ class FlashPointModel(Model):
         for idx, pos in enumerate(POI_LOCATIONS):
             self.add_victim(pos)
 
-        self.walls = {
-            ((3, 3), (3, 4)): "intact",
-            ((4, 5), (5, 5)): "intact",
-            ((5, 5), (5, 6)): "intact",
-        }
-        self.doors = {
-            ((1, 2), (1, 3)): "closed",
-            ((4, 2), (5, 2)): "closed",
-        }
+        self.walls = [
+            Wall((3, 3), (3, 4), "vertical"),
+            Wall((4, 5), (5, 5), "horizontal"),
+            Wall((5, 5), (5, 6), "vertical"),
+        ]
+
+        self.doors = [
+            Door((1, 2), (1, 3), "vertical"),
+            Door((4, 2), (5, 2), "horizontal"),
+        ]
 
     def place_smoke(self, pos):
         if pos in self.fire:
@@ -81,33 +98,65 @@ class FlashPointModel(Model):
                 continue
             
             if self.wall_in_direction(pos, new_pos):
-                self.break_wall(pos, new_pos) #que la dane
+                self.damage_wall(pos, new_pos)
             elif self.door_in_direction(pos, new_pos):
-                self.destroy_door(pos, new_pos)
+                self.damage_door(pos, new_pos)
             else:
                 self.place_smoke(new_pos)
         
-        self.damage_markers += 1
         self.check_game_over()
 
     def wall_in_direction(self, pos, new_pos):
-        return ((pos, new_pos) in self.walls and self.walls[(pos, new_pos)] == "intact") or \
-               ((new_pos, pos) in self.walls and self.walls[(new_pos, pos)] == "intact")
-
+        return any(
+            ((w.cell1 == pos and w.cell2 == new_pos) or 
+             (w.cell2 == pos and w.cell1 == new_pos))
+            for w in self.walls if w.state != "broken"
+        )
+    
     def door_in_direction(self, pos, new_pos):
-        return ((pos, new_pos) in self.doors) or ((new_pos, pos) in self.doors)
+        return any(
+            ((d.cell1 == pos and d.cell2 == new_pos) or 
+             (d.cell2 == pos and d.cell1 == new_pos))
+            for d in self.doors if d.state == "closed"
+        )
+    
+    def damage_wall(self, pos, new_pos):
+        for wall in self.walls:
+            if ((wall.cell1 == pos and wall.cell2 == new_pos) or 
+                (wall.cell2 == pos and wall.cell1 == new_pos)):
+                if wall.state == "intact":
+                    wall.damage += 1
+                    self.damage_markers += 1
+                    if wall.damage == 2:
+                        wall.state = "broken"
+                    else:
+                        wall.state = "damaged"
+                elif wall.state == "damaged":
+                    wall.state = "broken"
+                    self.damage_markers += 1
+                break
 
+    """
     def break_wall(self, pos, new_pos):
-        if (pos, new_pos) in self.walls:
-            self.walls[(pos, new_pos)] = "broken"
-        elif (new_pos, pos) in self.walls:
-            self.walls[(new_pos, pos)] = "broken"
+        for wall in self.walls:
+            if ((wall.cell1 == pos and wall.cell2 == new_pos) or 
+                (wall.cell2 == pos and wall.cell1 == new_pos)):
+                wall.state = "broken"
+                break
+    """
 
     def destroy_door(self, pos, new_pos):
         if (pos, new_pos) in self.doors:
             del self.doors[(pos, new_pos)]
         elif (new_pos, pos) in self.doors:
             del self.doors[(new_pos, pos)]
+
+    def damage_door(self, pos, new_pos):
+        for door in self.doors:
+            if ((door.cell1 == pos and door.cell2 == new_pos) or 
+                (door.cell2 == pos and door.cell1 == new_pos)):
+                door.state = "broken"
+                break
 
     #cambio
     def lose_victim(self, pos):
@@ -157,7 +206,6 @@ class FlashPointModel(Model):
     def step(self):
         #step de agente
         self.advance_fire()
-        #reroll de poi
         self.rerollPois()
         self.schedule.step()
         self.check_game_over()
