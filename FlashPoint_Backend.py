@@ -47,6 +47,7 @@ class FirefighterAgent(Agent):
         self.position: Tuple[int, int] = (0, 0)
         self.ap = 4
         self.saved_ap = 0
+        self.max_ap = 8
         self.carrying_victim = False
 
     def get_position(self) -> Tuple[int, int]:
@@ -83,12 +84,12 @@ class FirefighterAgent(Agent):
         is_victim = self.model.reveal_poi(pos)
         if is_victim and not self.carrying_victim:
             self.carrying_victim = True
-            print(f"Firefighter {self.unique_id} is now carrying a victim.")
+            # print(f"Firefighter {self.unique_id} is now carrying a victim.")
 
     def rescue_victim(self) -> None:
         self.model.rescued_victims += 1
         self.carrying_victim = False
-        print(f"Victim rescued by Firefighter {self.unique_id}! Total rescued: {self.model.rescued_victims}")
+        # print(f"Victim rescued by Firefighter {self.unique_id}! Total rescued: {self.model.rescued_victims}")
 
     def open_close_door(self) -> bool:
         for door in self.model.doors:
@@ -184,7 +185,9 @@ class FirefighterAgent(Agent):
         return False
 
 class FlashPointModel(Model):
-    def __init__(self, width: int = GRID_WIDTH, height: int = GRID_HEIGHT, n_agents: int = 1):
+
+    '''Setup and initialization'''
+    def __init__(self, width: int = GRID_WIDTH, height: int = GRID_HEIGHT, n_agents: int = 6):
         self.grid = MultiGrid(width, height, torus=False)
         self.schedule = RandomActivation(self)
         self.walls: List[Wall] = []
@@ -192,9 +195,10 @@ class FlashPointModel(Model):
         self.damage_markers = 0
         self.rescued_victims = 0
         self.lost_victims = 0
-        self.total_victims = 0
-        self.max_victims = 12
-        self.max_false_alarms = 6 
+        self.victims = [True,True,True,True,True,True,True,True,True,True,False,False,False,False]
+        # self.total_victims = 0
+        # self.max_victims = 12
+        # self.max_false_alarms = 6 
         self.max_pois_onBoard = 3
         self.running = True
         self.building_cells = frozenset((x, y) for x in range(width) for y in range(height))
@@ -211,37 +215,6 @@ class FlashPointModel(Model):
         
         self.setup_board()
 
-    def get_grid_dimensions(self) -> Tuple[int, int]:
-        return self.grid.width, self.grid.height
-
-    def get_fire_locations(self) -> List[Tuple[int, int]]:
-        return list(self.fire)
-
-    def get_smoke_locations(self) -> List[Tuple[int, int]]:
-        return list(self.smoke)
-
-    def get_poi_locations(self) -> Dict[Tuple[int, int], Dict[str, bool]]:
-        return {pos: info for pos, info in self.pois.items() if info["revealed"]}
-
-    def get_wall_info(self) -> List[Tuple[Tuple[int, int], Tuple[int, int], str, str]]:
-        return [(wall.cell1, wall.cell2, wall.orientation, wall.get_state()) for wall in self.walls]
-
-    def get_door_info(self) -> List[Tuple[Tuple[int, int], Tuple[int, int], str, str]]:
-        return [(door.cell1, door.cell2, door.orientation, door.get_state()) for door in self.doors]
-
-    def get_firefighter_info(self) -> List[Tuple[int, Tuple[int, int], int, bool]]:
-        return [(agent.unique_id, agent.get_position(), agent.get_ap(), agent.is_carrying_victim()) 
-                for agent in self.schedule.agents]
-
-    def get_game_state(self) -> Dict[str, int]:
-        return {
-            "damage_markers": self.damage_markers,
-            "rescued_victims": self.rescued_victims,
-            "lost_victims": self.lost_victims,
-            "total_victims": self.total_victims,
-            "running": self.running
-        }
-
     def setup_board(self) -> None:
         for i in range(self.n_agents):
             firefighter = FirefighterAgent(i, self)
@@ -252,6 +225,7 @@ class FlashPointModel(Model):
 
         self.fire = set(INITIAL_FIRE_LOCATIONS)
         
+        random.shuffle(self.victims)
         for pos in POI_LOCATIONS:
             self.add_victim(pos)
 
@@ -267,58 +241,36 @@ class FlashPointModel(Model):
         ]
 
     def add_victim(self, pos: Tuple[int, int]) -> None:
-        if self.total_victims < self.max_victims:
-            is_victim = random.choice([True, False])
-            self.pois[pos] = {"is_victim": is_victim, "revealed": False}
-            if is_victim:
-                self.total_victims += 1
-            print(f"Added {'victim' if is_victim else 'false alarm'} at {pos}")
-        else:
-            print("Maximum number of victims reached, not adding more.")
+        is_victim = self.victims.pop()
+        self.pois[pos] = {"is_victim": is_victim, "revealed": False}
+        # print(f"Added {'victim' if is_victim else 'false alarm'} at {pos}")
+        self.remove_fire_and_smoke(pos) 
 
-    def place_smoke(self, pos: Tuple[int, int], visited: set = None) -> None:
-        if visited is None:
-            visited = set()
-
-        # Add the current position to the set of visited positions
-        visited.add(pos)
+    def check_firefighters_and_victims(self) -> None:
+        # for agent in self.schedule.agents:
+        #     if isinstance(agent, FirefighterAgent) and agent.position in self.fire:
+        #         agent.knock_down()
         
-        if pos in self.fire:
-            self.handle_explosion(pos, visited)
-        elif pos in self.smoke:
-            self.convert_smoke_to_fire(pos)
-        else:
-            self.smoke.add(pos)
-            print(f"Added smoke at {pos}")
-            if pos in self.pois:
+        for pos in list(self.pois.keys()):
+            if pos in self.fire:
                 self.lose_victim(pos)
 
-    def convert_smoke_to_fire(self, pos: Tuple[int, int]) -> None:
-        self.smoke.remove(pos)
-        self.fire.add(pos)
-        print(f"Converted smoke to fire at {pos}")
-        if pos in self.pois:
-            self.lose_victim(pos)
+    def is_valid_position(self, pos: Tuple[int, int]) -> bool:
+        return 0 <= pos[0] < self.grid.width and 0 <= pos[1] < self.grid.height
 
-    def handle_explosion(self, pos: Tuple[int, int], visited: set) -> None:
-        directions = [(0, 1), (0, -1), (1, 0), (-1, 0)]
-        for dx, dy in directions:
-            new_pos = (pos[0] + dx, pos[1] + dy)
-            
-            # Check if new_pos is within the grid boundaries and not visited
-            if (0 <= new_pos[0] < self.grid.width and 0 <= new_pos[1] < self.grid.height 
-                    and new_pos not in visited):
-                
-                if self.wall_in_direction(pos, new_pos):
-                    self.damage_wall(pos, new_pos)
-                elif self.door_in_direction(pos, new_pos):
-                    self.damage_door(pos, new_pos)
-                else:
-                    # Pass the visited set to prevent revisiting
-                    self.place_smoke(new_pos, visited)
-            
-        self.check_game_over()
-            
+    def is_adjacent(self, pos1: Tuple[int, int], pos2: Tuple[int, int]) -> bool:
+        return abs(pos1[0] - pos2[0]) + abs(pos1[1] - pos2[1]) == 1
+
+    def lose_victim(self, pos: Tuple[int, int]) -> None:
+        if pos in self.pois:
+            if self.pois[pos]["is_victim"] and not self.pois[pos]["revealed"]:
+                self.lost_victims += 1
+                # print(f"A victim has been lost at {pos}! Total lost: {self.lost_victims}")
+            del self.pois[pos]
+            # print(f"Removed POI at {pos}")
+
+    '''walls and doors'''
+
     def wall_in_direction(self, pos: Tuple[int, int], new_pos: Tuple[int, int]) -> bool:
         return any(
             ((w.cell1 == pos and w.cell2 == new_pos) or 
@@ -348,65 +300,68 @@ class FlashPointModel(Model):
                 door.state = "broken"
                 break
 
-    def lose_victim(self, pos: Tuple[int, int]) -> None:
-        if pos in self.pois:
-            if self.pois[pos]["is_victim"] and not self.pois[pos]["revealed"]:
-                self.lost_victims += 1
-                print(f"A victim has been lost at {pos}! Total lost: {self.lost_victims}")
-            del self.pois[pos]
-            print(f"Removed POI at {pos}")
+    '''Rerrolling, steps, and checking game over'''
 
     def check_game_over(self) -> None:
-        if self.damage_markers >= 24:
+        if self.damage_markers == 24:
             print("Game Over: Building has collapsed!")
             self.running = False
-        elif self.lost_victims >= 4:
+        elif self.lost_victims == 4:
             print("Game Over: Too many victims lost!")
             self.running = False
-        elif self.rescued_victims + self.lost_victims == self.max_victims or self.rescued_victims >= 7:
+        elif self.rescued_victims == 7:
             print("Game Over: All victims accounted for!")
             self.running = False
 
     def step(self) -> None:
         print("\nStarting new step")
-        print("Fire locations:", self.fire)
-        print("Smoke locations:", self.smoke)
-        print("POI locations:", self.pois)
+        # print("Fire locations:", self.fire)
+        # print("Smoke locations:", self.smoke)
+        # print("POI locations:", self.pois)
         
-        self.advance_fire()
-        self.reroll_pois()
-        self.schedule.step()
-        self.check_game_over()
+        if self.running:
+            self.advance_fire()
+            self.reroll_pois()
+            self.schedule.step()
+            self.check_game_over()
+            print(f"Fire positions: {self.fire}")
+        else:
+            return
         
         print("Step completed")
-        print("Fire locations:", self.fire)
-        print("Smoke locations:", self.smoke)
-        print("POI locations:", self.pois)
+        # print("Fire locations:", self.fire)
+        # print("Smoke locations:", self.smoke)
+        # print("POI locations:", self.pois)
         print(f"Game state: {self.get_game_state()}")
 
     def advance_fire(self) -> None:
-        fire_roll = random.randint(1, 8) + random.randint(1, 6)
-        fire_pos = (fire_roll % self.grid.width, fire_roll // self.grid.width)
-        print(f"Advancing fire: rolled {fire_roll}, placing smoke at {fire_pos}")
-        self.place_smoke(fire_pos)
+        fire_roll = (random.randint(1, 8), random.randint(1, 6))
+        print(f"Advancing fire: rolled {fire_roll}")
+        self.place_smoke(fire_roll)
+        self.handle_flashover()
+        self.check_firefighters_and_victims()
 
     def reroll_pois(self) -> None:
-        print(f"Rerolling POIs. Current POIs: {self.pois}")
+        # print(f"Rerolling POIs. Current POIs: {self.pois}")
         
-        # Remove POIs that are in fire locations
-        pois_to_remove = [pos for pos in self.pois if pos in self.fire]
-        for pos in pois_to_remove:
-            self.lose_victim(pos)
+        # # Remove POIs that are in fire locations
+        # pois_to_remove = [pos for pos in self.pois if pos in self.fire]
+        # # print(f"POIs to remove: {pois_to_remove}")
+        # for pos in pois_to_remove:
+        #     self.lose_victim(pos)
         
         # Count revealed POIs
         revealed_pois = sum(1 for poi in self.pois.values() if poi["revealed"])
         
         # Add new POIs if necessary
-        while len(self.pois) < self.max_pois_onBoard and self.total_victims < self.max_victims:
-            poi_roll = random.randint(1, 8) + random.randint(1, 6)
-            poi_pos = (poi_roll % self.grid.width, poi_roll // self.grid.height)
-            if poi_pos not in self.pois and poi_pos not in self.fire and poi_pos not in self.smoke:
+        while len(self.pois) < self.max_pois_onBoard:
+            poi_roll = (random.randint(1, 8), random.randint(1, 6))
+            print(f"Rolled POI: {poi_roll}")
+            poi_pos = poi_roll
+            if poi_pos not in self.pois:
                 self.add_victim(poi_pos)
+                # Remove fire and smoke from the POI position
+                self.remove_fire_and_smoke(poi_pos)
         
         print(f"After rerolling, POIs: {self.pois}")
 
@@ -423,15 +378,130 @@ class FlashPointModel(Model):
                 return poi_info["is_victim"]
         return False
 
+    '''Getters'''
+
+    def get_grid_dimensions(self) -> Tuple[int, int]:
+        return self.grid.width, self.grid.height
+
+    def get_fire_locations(self) -> List[Tuple[int, int]]:
+        return list(self.fire)
+
+    def get_smoke_locations(self) -> List[Tuple[int, int]]:
+        return list(self.smoke)
+
+    def get_poi_locations(self) -> Dict[Tuple[int, int], Dict[str, bool]]:
+        return {pos: info for pos, info in self.pois.items() if info["revealed"]}
+
+    def get_wall_info(self) -> List[Tuple[Tuple[int, int], Tuple[int, int], str, str]]:
+        return [(wall.cell1, wall.cell2, wall.orientation, wall.get_state()) for wall in self.walls]
+
+    def get_door_info(self) -> List[Tuple[Tuple[int, int], Tuple[int, int], str, str]]:
+        return [(door.cell1, door.cell2, door.orientation, door.get_state()) for door in self.doors]
+
+    def get_firefighter_info(self) -> List[Tuple[int, Tuple[int, int], int, bool]]:
+        return [(agent.unique_id, agent.get_position(), agent.get_ap(), agent.is_carrying_victim()) 
+                for agent in self.schedule.agents]
+
+    def get_game_state(self) -> Dict[str, int]:
+        return {
+            "damage_markers": self.damage_markers,
+            "rescued_victims": self.rescued_victims,
+            "lost_victims": self.lost_victims,
+            "running": self.running
+        }
+
+    '''Handling explosions smoke and fire'''
+
+    def place_smoke(self, pos: Tuple[int, int]) -> None:
+        if pos in self.fire:
+            self.handle_explosion(pos)
+        elif pos in self.smoke:
+            self.convert_smoke_to_fire(pos)
+        else:
+            adjacent_fire = any(self.is_adjacent(pos, fire_pos) for fire_pos in self.fire)
+            if adjacent_fire:
+                self.fire.add(pos)
+                print(f"Placed fire at {pos} (adjacent to existing fire)")
+            else:
+                self.smoke.add(pos)
+                print(f"Placed smoke at {pos}")
+
+    def convert_smoke_to_fire(self, pos: Tuple[int, int]) -> None:
+        self.smoke.remove(pos)
+        self.fire.add(pos)
+        print(f"Converted smoke to fire at {pos}")
+        if pos in self.pois:
+            self.lose_victim(pos)
+
+    def handle_explosion(self, pos: Tuple[int, int]) -> None:
+        print(f"Explosion at {pos}")
+        directions = [(0, 1), (0, -1), (1, 0), (-1, 0)]
+        for dx, dy in directions:
+            new_pos = (pos[0] + dx, pos[1] + dy)
+            if self.is_valid_position(new_pos):
+                if self.wall_in_direction(pos, new_pos):
+                    self.damage_wall(pos, new_pos)
+                elif self.door_in_direction(pos, new_pos):
+                    self.damage_door(pos, new_pos)
+                elif new_pos in self.fire:
+                    self.handle_shockwave(new_pos, (dx, dy))
+                else:
+                    self.place_fire_or_flip_smoke(new_pos)
+
+    def handle_shockwave(self, start_pos: Tuple[int, int], direction: Tuple[int, int]) -> None:
+        current_pos = start_pos
+        while True:
+            next_pos = (current_pos[0] + direction[0], current_pos[1] + direction[1])
+            if not self.is_valid_position(next_pos):
+                break
+            
+            if next_pos not in self.fire:
+                if next_pos in self.smoke:
+                    self.convert_smoke_to_fire(next_pos)
+                elif self.wall_in_direction(current_pos, next_pos):
+                    self.damage_wall(current_pos, next_pos)
+                    break
+                elif self.door_in_direction(current_pos, next_pos):
+                    self.damage_door(current_pos, next_pos)
+                    break
+                else:
+                    self.place_fire_or_flip_smoke(next_pos)
+                    break
+            
+            current_pos = next_pos
+
+    def place_fire_or_flip_smoke(self, pos: Tuple[int, int]) -> None:
+        if pos in self.smoke:
+            self.convert_smoke_to_fire(pos)
+        else:
+            self.fire.add(pos)
+            print(f"Placed fire at {pos}")
+        if pos in self.pois:
+            self.lose_victim(pos)
+
+    def handle_flashover(self) -> None:
+        changed = True
+        while changed:
+            changed = False
+            for smoke_pos in list(self.smoke):
+                if any(self.is_adjacent(smoke_pos, fire_pos) for fire_pos in self.fire):
+                    self.convert_smoke_to_fire(smoke_pos)
+                    changed = True
+
+    def remove_fire_and_smoke(self, pos: Tuple[int, int]) -> None:
+        if pos in self.fire:
+            self.fire.remove(pos)
+            print(f"Removed fire at {pos} due to POI placement")
+        if pos in self.smoke:
+            self.smoke.remove(pos)
+            print(f"Removed smoke at {pos} due to POI placement")
+
 # Example usage
 if __name__ == "__main__":
     model = FlashPointModel()
     i =0
-    while model.running:  # Run for 10 steps
-    #     model.step()
-    #     print(f"Step completed. Game state: {model.get_game_state()}")
-    # for i in range(9):
+    while model.running and i < 100: 
         print(f"\n--- Step {i} ---")
         model.step()
         i+=1
-        # print(f"Step completed. Game state: {model.get_game_state()}")
+
