@@ -3,6 +3,7 @@ from typing import List, Tuple, Dict, Set
 from mesa import Model, Agent
 from mesa.space import MultiGrid
 from mesa.time import RandomActivation
+import matplotlib.pyplot as plt
 
 #problema con la generacion de celdas, parece que esta interpretando erroneamente las entradas
 
@@ -629,6 +630,73 @@ for line in lines[27:31]:
     if len(parts) == 2:
         x, y = int(parts[0]), int(parts[1])
         entrada.append((x, y))
+
+def visualize_grid_with_doors(GRID_WIDTH, GRID_HEIGTH, cell_walls, grid_dict):
+    fig, ax = plt.subplots(figsize=(GRID_WIDTH, GRID_HEIGTH))
+
+    # Draw the grid
+    for i in range(GRID_WIDTH + 1):
+        ax.plot([i, i], [0, GRID_HEIGTH], color="black")
+    for j in range(GRID_HEIGTH + 1):
+        ax.plot([0, GRID_WIDTH], [j, j], color="black")
+
+    # Draw the walls and doors
+    for i in range(GRID_HEIGTH):
+        for j in range(GRID_WIDTH):
+            walls = cell_walls[i][j]
+            x = j
+            y = GRID_HEIGTH - 1 - i  # Flip the y-axis for proper visualization
+
+            # Check for walls and doors in grid_dict for each cell
+            current_cell = (i+1, j+1)
+
+            for neighbor in grid_dict[current_cell]:
+                neighbor_cell, wall_value = neighbor
+
+                # Determine the direction to draw the wall/door
+                nx, ny = neighbor_cell
+                if nx == current_cell[0]:  # Same row, horizontal wall/door
+                    if ny > current_cell[1]:  # Neighbor is to the right
+                        if wall_value == 2:
+                            color = "blue" 
+                        elif wall_value == 5:
+                            color = "red"                        
+                        else:
+                            color = "black"
+                        ax.plot([x + 1, x + 1], [y, y + 1], color=color, linewidth=2)
+                    else:  # Neighbor is to the left
+                        if wall_value == 2:
+                            color = "blue" 
+                        elif wall_value == 5:
+                            color = "red"                        
+                        else:
+                            color = "black"
+                        ax.plot([x, x], [y, y + 1], color=color, linewidth=2)
+                elif ny == current_cell[1]:  # Same column, vertical wall/door
+                    if nx > current_cell[0]:  # Neighbor is below
+                        if wall_value == 2:
+                            color = "blue" 
+                        elif wall_value == 5:
+                            color = "red"                        
+                        else:
+                            color = "black"
+                        ax.plot([x, x + 1], [y, y], color=color, linewidth=2)
+                    else:  # Neighbor is above
+                        if wall_value == 2:
+                            color = "blue" 
+                        elif wall_value == 5:
+                            color = "red"                        
+                        else:
+                            color = "black"
+                        ax.plot([x, x + 1], [y + 1, y + 1], color=color, linewidth=2)
+
+    # Set the limits and aspect ratio
+    ax.set_xlim(0, GRID_WIDTH)
+    ax.set_ylim(0, GRID_HEIGTH)
+    ax.set_aspect('equal')
+    ax.axis('off')  # Turn off the axis
+
+    plt.show()
 
 # Example usage
 if __name__ == "__main__":
