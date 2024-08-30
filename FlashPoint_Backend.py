@@ -187,14 +187,8 @@ class FlashPointModel(Model):
     '''Setup and initialization'''
 
     def setup_board(self, wall_matrix: List[str],victims,fire) -> None:
-        for x in range(1, self.width + 1):
-            for y in range(1, self.height + 1):
-                self.grid_structure[(x, y)] = []
 
-        # Process the wall matrix
-        for i, cell in enumerate(wall_matrix):
-            x, y = (i % self.width) + 1, (i // self.width) + 1
-            self.process_cell(x, y, cell)
+        self.grid_structure = self.generate_grid(self.width, self.height, wall_matrix)
         
         for pos, connections in self.grid_structure.items():
             for adj, cost in connections:
@@ -202,8 +196,8 @@ class FlashPointModel(Model):
                     self.wall_health[(pos, adj)] = 2
 
         # Process the doors
-        for door in self.doors:
-            self.update_grid_for_door(*door)
+        self.update_walls_to_doors(self.grid_structure, self.doors)
+
 
         # Add firefighters (keep existing code)
         for i in range(self.n_agents):
@@ -220,7 +214,6 @@ class FlashPointModel(Model):
             self.fire.add(fire[i])
 
         #falta poner donde van a estar las entradas
-
 
     def process_cell(self, x: int, y: int, cell: str) -> None:
         directions = [(-1, 0), (0, -1), (1, 0), (0, 1)]  # up, left, down, right
@@ -244,9 +237,11 @@ class FlashPointModel(Model):
         self.grid_structure[cell1] = [((x, y), 2 if (x, y) == cell2 else c) for ((x, y), c) in self.grid_structure[cell1]]
         self.grid_structure[cell2] = [((x, y), 2 if (x, y) == cell1 else c) for ((x, y), c) in self.grid_structure[cell2]]
 
-        # Remove wall health if there was a wall here
-        self.wall_health.pop((cell1, cell2), None)
-        self.wall_health.pop((cell2, cell1), None)
+        # Ensure the door is in self.doors
+        door = (cell1, cell2)
+        reverse_door = (cell2, cell1)
+        if door not in self.doors and reverse_door not in self.doors:
+            self.doors.add(door)
 
     '''victims and false alarms'''
 
@@ -285,34 +280,108 @@ class FlashPointModel(Model):
 
     '''walls and doors'''
 
+    # nueva generacion de grid y actualizacion de paredes a puertas
+
+    def generate_grid(self,grid_width, grid_height, cell_walls):
+        grid_dict = {}
+
+        for i in range(grid_height):
+            for j in range(grid_width):
+                cell_key = (i+1, j+1)
+                walls = cell_walls[i][j]
+                neighbors = []
+
+                # Check UP
+                if i > 0:  # Not the first row
+                    neighbors.append([(i, j+1), 5 if walls[0] == '1' else 1])
+                
+                # Check LEFT
+                if j > 0:  # Not the first column
+                    neighbors.append([(i+1, j), 5 if walls[1] == '1' else 1])
+                
+                # Check DOWN
+                if i < grid_height - 1:  # Not the last row
+                    neighbors.append([(i+2, j+1), 5 if walls[2] == '1' else 1])
+                
+                # Check RIGHT
+                if j < grid_width - 1:  # Not the last column
+                    neighbors.append([(i+1, j+2), 5 if walls[3] == '1' else 1])
+
+                grid_dict[cell_key] = neighbors
+
+        return grid_dict
+
+    def update_walls_to_doors(self,grid_dict, door_pairs):
+        for (cell1, cell2) in door_pairs:
+            # Extract coordinates
+            x1, y1 = cell1
+            x2, y2 = cell2
+
+            # Determine the direction of the wall and update it to a door (value 2)
+            if x1 == x2:  # Same row, horizontal wall (left-right)
+                if y1 < y2:  # cell1 is to the left of cell2
+                    self.update_wall_value(grid_dict, (x1, y1), (x2, y2), 3, 1)  # Right wall of cell1, Left wall of cell2
+                else:  # cell1 is to the right of cell2
+                    self.update_wall_value(grid_dict, (x2, y2), (x1, y1), 3, 1)  # Right wall of cell2, Left wall of cell1
+            elif y1 == y2:  # Same column, vertical wall (up-down)
+                if x1 < x2:  # cell1 is above cell2
+                    self.update_wall_value(grid_dict, (x1, y1), (x2, y2), 2, 0)  # Bottom wall of cell1, Top wall of cell2
+                else:  # cell1 is below cell2
+                    self.update_wall_value(grid_dict, (x2, y2), (x1, y1), 2, 0)  # Bottom wall of cell2, Top wall of cell1
+
+    def update_wall_value(self,grid_dict, cell1, cell2, wall_index1, wall_index2):
+        # Convert the current wall values from 5 (wall) to 2 (door) between cell1 and cell2
+        for i, neighbor in enumerate(grid_dict[cell1]):
+            if neighbor[0] == cell2 and neighbor[1] == 5:
+                grid_dict[cell1][i][1] = 2
+        for i, neighbor in enumerate(grid_dict[cell2]):
+            if neighbor[0] == cell1 and neighbor[1] == 5:
+                grid_dict[cell2][i][1] = 2
+
+
     def wall_in_direction(self, pos: Tuple[int, int], new_pos: Tuple[int, int]) -> bool:
+        if pos not in self.grid_structure:
+            print(f"Warning: Position {pos} not found in grid_structure")
+            return False
         return any(adj == new_pos and cost == 5 for adj, cost in self.grid_structure[pos])
 
     def door_in_direction(self, pos: Tuple[int, int], new_pos: Tuple[int, int]) -> bool:
+        if pos not in self.grid_structure:
+            print(f"Warning: Position {pos} not found in grid_structure")
+            return False
         return any(adj == new_pos and cost == 2 for adj, cost in self.grid_structure[pos])
 
     def damage_wall(self, pos: Tuple[int, int], new_pos: Tuple[int, int]) -> None:
-        if (pos, new_pos) in self.wall_health:
-            self.wall_health[(pos, new_pos)] -= 1
-            if self.wall_health[(pos, new_pos)] == 0:
-                # Wall is destroyed
-                self.grid_structure[pos] = [((x, y), 1 if (x, y) == new_pos else c) for ((x, y), c) in self.grid_structure[pos]]
-                self.grid_structure[new_pos] = [((x, y), 1 if (x, y) == pos else c) for ((x, y), c) in self.grid_structure[new_pos]]
-                del self.wall_health[(pos, new_pos)]
-                self.damage_markers += 1
+        if self.wall_in_direction(pos, new_pos):
+            wall_key = (pos, new_pos) if (pos, new_pos) in self.wall_health else (new_pos, pos)
+            self.wall_health[wall_key] -= 1
+            self.damage_markers += 1
+            
+            if self.wall_health[wall_key] == 0:
+                # Wall is destroyed, update to open path
+                self.update_connection_cost(pos, new_pos, 1)
+                self.update_connection_cost(new_pos, pos, 1)
+                del self.wall_health[wall_key]
+                print(f"Wall between {pos} and {new_pos} has been destroyed.")
             else:
-                print(f"Wall between {pos} and {new_pos} damaged. Health: {self.wall_health[(pos, new_pos)]}")
-                self.damage_markers += 1
-        elif (new_pos, pos) in self.wall_health:
-            # Check the reverse direction
-            self.damage_wall(new_pos, pos)
+                print(f"Wall between {pos} and {new_pos} has been damaged. Health: {self.wall_health[wall_key]}")
+        else:
+            print(f"No wall found between {pos} and {new_pos}")
 
     def damage_door(self, pos: Tuple[int, int], new_pos: Tuple[int, int]) -> None:
-        # print(self.doors)
-        print(self.grid_structure)
-        self.grid_structure[pos] = [((x, y), 1 if (x, y) == new_pos else c) for ((x, y), c) in self.grid_structure[pos]]
-        self.grid_structure[new_pos] = [((x, y), 1 if (x, y) == pos else c) for ((x, y), c) in self.grid_structure[new_pos]]
-        self.doors.remove((pos, new_pos))
+        if self.door_in_direction(pos, new_pos):
+            # Update the door to be an open path (cost 1)
+            self.update_connection_cost(pos, new_pos, 1)
+            self.update_connection_cost(new_pos, pos, 1)
+            print(f"Door between {pos} and {new_pos} has been destroyed.")
+        else:
+            print(f"No door found between {pos} and {new_pos}")
+
+    def update_connection_cost(self, pos: Tuple[int, int], neighbor: Tuple[int, int], new_cost: int) -> None:
+        for i, (adj, cost) in enumerate(self.grid_structure[pos]):
+            if adj == neighbor:
+                self.grid_structure[pos][i] = (adj, new_cost)
+                break
 
     '''Rerrolling, steps, and checking game over'''
 
@@ -421,7 +490,7 @@ class FlashPointModel(Model):
         directions = [(0, 1), (0, -1), (1, 0), (-1, 0)]
         for dx, dy in directions:
             new_pos = (pos[0] + dx, pos[1] + dy)
-            if self.is_valid_position(new_pos):
+            if new_pos in self.grid_structure:
                 if self.wall_in_direction(pos, new_pos):
                     self.damage_wall(pos, new_pos)
                 elif self.door_in_direction(pos, new_pos):
@@ -528,10 +597,9 @@ def chunks(lst, n):
     for i in range(0, len(lst), n):
         yield lst[i:i + n]
 
-for y, line in enumerate(lines[:6]):
-    bits= ''.join(line.split())
-    for x, cell in enumerate(chunks(bits, 4)):
-        wall_matrix.append(cell)
+for line in lines[:6]:
+    row = line.strip().split()
+    wall_matrix.append(row)
 
 for line in lines[6:9]:
     parts = line.split()
@@ -566,14 +634,9 @@ for line in lines[27:31]:
 if __name__ == "__main__":
     model = FlashPointModel(GRID_WIDTH,GRID_HEIGHT,wall_matrix,victims,fuego,puertas)
     i =0
-    # while model.running and i < 100: 
-    #     print(f"\n--- Step {i} ---")
-    #     model.step()
-    #     i+=1
+    while model.running and i < 100: 
+        print(f"\n--- Step {i} ---")
+        model.step()
+        i+=1
 
-    for x in range(1, model.width + 1):  # Iterate from 1 to model.width
-        for y in range(1, model.height + 1):  # Iterate from 1 to model.height
-            key = (x, y)
-            value = model.grid_structure[key]
-            print(f"Key: {key}, Value: {value}")
 
