@@ -4,42 +4,7 @@ from mesa import Model, Agent
 from mesa.space import MultiGrid
 from mesa.time import RandomActivation
 
-# Constants
-GRID_WIDTH, GRID_HEIGHT = 8, 6
-INITIAL_FIRE_LOCATIONS = frozenset([(2, 2), (2, 3), (3, 2), (3, 3), (3, 4), (3, 5), (4, 4), (5, 6), (5, 7), (6, 6)])
-POI_LOCATIONS = frozenset([(2, 4), (5, 8), (5, 1)])
-
-class Wall:
-    def __init__(self, cell1: Tuple[int, int], cell2: Tuple[int, int], orientation: str):
-        self.cell1, self.cell2 = cell1, cell2
-        self.orientation = orientation
-        self.state = "intact"
-        self.damage = 0
-
-    def get_state(self) -> str:
-        return self.state
-
-    def get_damage(self) -> int:
-        return self.damage
-
-    def damage_wall(self) -> None:
-        if self.state == "intact":
-            self.damage += 1
-            self.state = "damaged" if self.damage == 1 else "broken"
-        elif self.state == "damaged":
-            self.state = "broken"
-
-class Door:
-    def __init__(self, cell1: Tuple[int, int], cell2: Tuple[int, int], orientation: str):
-        self.cell1, self.cell2 = cell1, cell2
-        self.orientation = orientation
-        self.state = "closed"
-
-    def get_state(self) -> str:
-        return self.state
-
-    def toggle(self) -> None:
-        self.state = "open" if self.state == "closed" else "closed"
+#problema con la generacion de celdas, parece que esta interpretando erroneamente las entradas
 
 class FirefighterAgent(Agent):
     def __init__(self, unique_id: int, model: 'FlashPointModel'):
@@ -187,21 +152,18 @@ class FirefighterAgent(Agent):
 class FlashPointModel(Model):
 
     '''Setup and initialization'''
-    def __init__(self, width: int = GRID_WIDTH, height: int = GRID_HEIGHT, n_agents: int = 6):
+    def __init__(self, width: int, height: int, wall_matrix,victims,fire, doors: List[Tuple[Tuple[int, int], Tuple[int, int]]],n_agents: int = 6,):
         self.grid = MultiGrid(width, height, torus=False)
         self.schedule = RandomActivation(self)
-        self.walls: List[Wall] = []
-        self.doors: List[Door] = []
+        # self.walls: List[Wall] = []
+        self.doors = set(doors) if doors else set()
         self.damage_markers = 0
         self.rescued_victims = 0
         self.lost_victims = 0
         self.victims = [True,True,True,True,True,True,True,True,True,True,False,False,False,False]
-        # self.total_victims = 0
-        # self.max_victims = 12
-        # self.max_false_alarms = 6 
         self.max_pois_onBoard = 3
         self.running = True
-        self.building_cells = frozenset((x, y) for x in range(width) for y in range(height))
+        self.building_cells = frozenset((x, y) for x in range(1, width + 1) for y in range(1, height + 1))
         self.n_agents = n_agents
 
         self.fire: Set[Tuple[int, int]] = set()
@@ -213,9 +175,37 @@ class FlashPointModel(Model):
         self.exits = set([(0, y) for y in range(height)] + [(width-1, y) for y in range(height)] + 
                  [(x, 0) for x in range(width)] + [(x, height-1) for x in range(width)])
         
-        self.setup_board()
+        self.grid_structure = {}
+        self.wall_health = {}
+        self.initial_victims = victims
+        self.initial_fire = fire
+        self.width = width
+        self.height = height
 
-    def setup_board(self) -> None:
+        self.setup_board(wall_matrix, victims, fire)
+
+    '''Setup and initialization'''
+
+    def setup_board(self, wall_matrix: List[str],victims,fire) -> None:
+        for x in range(1, self.width + 1):
+            for y in range(1, self.height + 1):
+                self.grid_structure[(x, y)] = []
+
+        # Process the wall matrix
+        for i, cell in enumerate(wall_matrix):
+            x, y = (i % self.width) + 1, (i // self.width) + 1
+            self.process_cell(x, y, cell)
+        
+        for pos, connections in self.grid_structure.items():
+            for adj, cost in connections:
+                if cost == 5:  # If it's a wall
+                    self.wall_health[(pos, adj)] = 2
+
+        # Process the doors
+        for door in self.doors:
+            self.update_grid_for_door(*door)
+
+        # Add firefighters (keep existing code)
         for i in range(self.n_agents):
             firefighter = FirefighterAgent(i, self)
             self.schedule.add(firefighter)
@@ -223,22 +213,46 @@ class FlashPointModel(Model):
             self.grid.place_agent(firefighter, (x, y))
             firefighter.position = (x, y)
 
-        self.fire = set(INITIAL_FIRE_LOCATIONS)
-        
-        random.shuffle(self.victims)
-        for pos in POI_LOCATIONS:
-            self.add_victim(pos)
+        for i in range(len(victims)):
+            self.add_initial_victimas(victims)
 
-        self.walls = [
-            Wall((3, 3), (3, 4), "vertical"),
-            Wall((4, 5), (5, 5), "horizontal"),
-            Wall((5, 5), (5, 6), "vertical"),
-        ]
+        for i in range(len(fire)):
+            self.fire.add(fire[i])
 
-        self.doors = [
-            Door((1, 2), (1, 3), "vertical"),
-            Door((4, 2), (5, 2), "horizontal"),
-        ]
+        #falta poner donde van a estar las entradas
+
+
+    def process_cell(self, x: int, y: int, cell: str) -> None:
+        directions = [(-1, 0), (0, -1), (1, 0), (0, 1)]  # up, left, down, right
+        for i, direction in enumerate(directions):
+            new_x, new_y = x + direction[0], y + direction[1]
+            if 1 <= new_x < self.width and 1 <= new_y < self.height:
+                if cell[i] == '0':
+                    self.grid_structure[(x, y)].append(((new_x, new_y), 1))
+                else:
+                    # Set walls with cost 5
+                    self.grid_structure[(x, y)].append(((new_x, new_y), 5))
+                    # Initialize wall health
+                    self.wall_health[((x, y), (new_x, new_y))] = 2
+
+    def update_grid_for_door(self, cell1: Tuple[int, int], cell2: Tuple[int, int]) -> None:
+        if cell1 not in self.grid_structure or cell2 not in self.grid_structure:
+            print(f"Warning: Door between {cell1} and {cell2} is outside the grid. Skipping.")
+            return
+
+        # Update the grid structure to reflect a door (cost 2) between cell1 and cell2
+        self.grid_structure[cell1] = [((x, y), 2 if (x, y) == cell2 else c) for ((x, y), c) in self.grid_structure[cell1]]
+        self.grid_structure[cell2] = [((x, y), 2 if (x, y) == cell1 else c) for ((x, y), c) in self.grid_structure[cell2]]
+
+        # Remove wall health if there was a wall here
+        self.wall_health.pop((cell1, cell2), None)
+        self.wall_health.pop((cell2, cell1), None)
+
+    '''victims and false alarms'''
+
+    def add_initial_victimas(self, victims) -> None:
+        for v in victims:
+            self.pois[v[0]] = {"is_victim": v[1], "revealed": False}
 
     def add_victim(self, pos: Tuple[int, int]) -> None:
         is_victim = self.victims.pop()
@@ -272,33 +286,33 @@ class FlashPointModel(Model):
     '''walls and doors'''
 
     def wall_in_direction(self, pos: Tuple[int, int], new_pos: Tuple[int, int]) -> bool:
-        return any(
-            ((w.cell1 == pos and w.cell2 == new_pos) or 
-             (w.cell2 == pos and w.cell1 == new_pos))
-            for w in self.walls if w.state != "broken"
-        )
-    
+        return any(adj == new_pos and cost == 5 for adj, cost in self.grid_structure[pos])
+
     def door_in_direction(self, pos: Tuple[int, int], new_pos: Tuple[int, int]) -> bool:
-        return any(
-            ((d.cell1 == pos and d.cell2 == new_pos) or 
-             (d.cell2 == pos and d.cell1 == new_pos))
-            for d in self.doors if d.state == "closed"
-        )
-    
+        return any(adj == new_pos and cost == 2 for adj, cost in self.grid_structure[pos])
+
     def damage_wall(self, pos: Tuple[int, int], new_pos: Tuple[int, int]) -> None:
-        for wall in self.walls:
-            if ((wall.cell1 == pos and wall.cell2 == new_pos) or 
-                (wall.cell2 == pos and wall.cell1 == new_pos)):
-                wall.damage_wall()
+        if (pos, new_pos) in self.wall_health:
+            self.wall_health[(pos, new_pos)] -= 1
+            if self.wall_health[(pos, new_pos)] == 0:
+                # Wall is destroyed
+                self.grid_structure[pos] = [((x, y), 1 if (x, y) == new_pos else c) for ((x, y), c) in self.grid_structure[pos]]
+                self.grid_structure[new_pos] = [((x, y), 1 if (x, y) == pos else c) for ((x, y), c) in self.grid_structure[new_pos]]
+                del self.wall_health[(pos, new_pos)]
                 self.damage_markers += 1
-                break
+            else:
+                print(f"Wall between {pos} and {new_pos} damaged. Health: {self.wall_health[(pos, new_pos)]}")
+                self.damage_markers += 1
+        elif (new_pos, pos) in self.wall_health:
+            # Check the reverse direction
+            self.damage_wall(new_pos, pos)
 
     def damage_door(self, pos: Tuple[int, int], new_pos: Tuple[int, int]) -> None:
-        for door in self.doors:
-            if ((door.cell1 == pos and door.cell2 == new_pos) or 
-                (door.cell2 == pos and door.cell1 == new_pos)):
-                door.state = "broken"
-                break
+        # print(self.doors)
+        print(self.grid_structure)
+        self.grid_structure[pos] = [((x, y), 1 if (x, y) == new_pos else c) for ((x, y), c) in self.grid_structure[pos]]
+        self.grid_structure[new_pos] = [((x, y), 1 if (x, y) == pos else c) for ((x, y), c) in self.grid_structure[new_pos]]
+        self.doors.remove((pos, new_pos))
 
     '''Rerrolling, steps, and checking game over'''
 
@@ -366,6 +380,7 @@ class FlashPointModel(Model):
         print(f"After rerolling, POIs: {self.pois}")
 
     def reveal_poi(self, pos: Tuple[int, int]) -> bool:
+        print(self.pois)
         if pos in self.pois:
             poi_info = self.pois[pos]
             if not poi_info["revealed"]:
@@ -377,38 +392,6 @@ class FlashPointModel(Model):
                     self.pois.pop(pos)
                 return poi_info["is_victim"]
         return False
-
-    '''Getters'''
-
-    def get_grid_dimensions(self) -> Tuple[int, int]:
-        return self.grid.width, self.grid.height
-
-    def get_fire_locations(self) -> List[Tuple[int, int]]:
-        return list(self.fire)
-
-    def get_smoke_locations(self) -> List[Tuple[int, int]]:
-        return list(self.smoke)
-
-    def get_poi_locations(self) -> Dict[Tuple[int, int], Dict[str, bool]]:
-        return {pos: info for pos, info in self.pois.items() if info["revealed"]}
-
-    def get_wall_info(self) -> List[Tuple[Tuple[int, int], Tuple[int, int], str, str]]:
-        return [(wall.cell1, wall.cell2, wall.orientation, wall.get_state()) for wall in self.walls]
-
-    def get_door_info(self) -> List[Tuple[Tuple[int, int], Tuple[int, int], str, str]]:
-        return [(door.cell1, door.cell2, door.orientation, door.get_state()) for door in self.doors]
-
-    def get_firefighter_info(self) -> List[Tuple[int, Tuple[int, int], int, bool]]:
-        return [(agent.unique_id, agent.get_position(), agent.get_ap(), agent.is_carrying_victim()) 
-                for agent in self.schedule.agents]
-
-    def get_game_state(self) -> Dict[str, int]:
-        return {
-            "damage_markers": self.damage_markers,
-            "rescued_victims": self.rescued_victims,
-            "lost_victims": self.lost_victims,
-            "running": self.running
-        }
 
     '''Handling explosions smoke and fire'''
 
@@ -496,12 +479,101 @@ class FlashPointModel(Model):
             self.smoke.remove(pos)
             print(f"Removed smoke at {pos} due to POI placement")
 
+    '''Getters'''
+
+    def get_grid_dimensions(self) -> Tuple[int, int]:
+        return self.grid.width, self.grid.height
+
+    def get_fire_locations(self) -> List[Tuple[int, int]]:
+        return list(self.fire)
+
+    def get_smoke_locations(self) -> List[Tuple[int, int]]:
+        return list(self.smoke)
+
+    def get_poi_locations(self) -> Dict[Tuple[int, int], Dict[str, bool]]:
+        return {pos: info for pos, info in self.pois.items() if info["revealed"]}
+
+    def get_wall_info(self) -> List[Tuple[Tuple[int, int], Tuple[int, int], str, str]]:
+        return [(wall.cell1, wall.cell2, wall.orientation, wall.get_state()) for wall in self.walls]
+
+    def get_door_info(self) -> List[Tuple[Tuple[int, int], Tuple[int, int], str, str]]:
+        return [(door.cell1, door.cell2, door.orientation, door.get_state()) for door in self.doors]
+
+    def get_firefighter_info(self) -> List[Tuple[int, Tuple[int, int], int, bool]]:
+        return [(agent.unique_id, agent.get_position(), agent.get_ap(), agent.is_carrying_victim()) 
+                for agent in self.schedule.agents]
+
+    def get_game_state(self) -> Dict[str, int]:
+        return {
+            "damage_markers": self.damage_markers,
+            "rescued_victims": self.rescued_victims,
+            "lost_victims": self.lost_victims,
+            "running": self.running
+        }
+
+
+GRID_WIDTH,GRID_HEIGHT = 8, 6
+wall_matrix = []
+victims = []
+fuego= []
+puertas=[]
+entrada=[]
+
+#esto va a entrar en el codigo
+with open("input.txt", 'r') as file:
+    lines = file.readlines()
+
+def chunks(lst, n):
+    """Yield successive n-sized chunks from lst."""
+    for i in range(0, len(lst), n):
+        yield lst[i:i + n]
+
+for y, line in enumerate(lines[:6]):
+    bits= ''.join(line.split())
+    for x, cell in enumerate(chunks(bits, 4)):
+        wall_matrix.append(cell)
+
+for line in lines[6:9]:
+    parts = line.split()
+    if len(parts) == 3:
+        x, y = int(parts[0]), int(parts[1])
+        entity_type = parts[2]
+        if entity_type == 'v':
+            victims.append(((x, y), True))
+        else:
+            victims.append(((x, y), False))
+
+for line in lines[9:19]:
+    # Split the line into x and y
+    parts = line.split()
+    if len(parts) == 2:
+        x, y = int(parts[0]), int(parts[1])
+        fuego.append((x, y))
+
+for line in lines[19:27]:
+    parts = line.split()
+    if len(parts) == 4:
+        x1, y1, x2, y2 = map(int, parts)
+        puertas.append(((x1, y1), (x2, y2)))
+
+for line in lines[27:31]:
+    parts = line.split()
+    if len(parts) == 2:
+        x, y = int(parts[0]), int(parts[1])
+        entrada.append((x, y))
+
 # Example usage
 if __name__ == "__main__":
-    model = FlashPointModel()
+    model = FlashPointModel(GRID_WIDTH,GRID_HEIGHT,wall_matrix,victims,fuego,puertas)
     i =0
-    while model.running and i < 100: 
-        print(f"\n--- Step {i} ---")
-        model.step()
-        i+=1
+    # while model.running and i < 100: 
+    #     print(f"\n--- Step {i} ---")
+    #     model.step()
+    #     i+=1
+
+    for x in range(1, model.width + 1):  # Iterate from 1 to model.width
+        for y in range(1, model.height + 1):  # Iterate from 1 to model.height
+            key = (x, y)
+            value = model.grid_structure[key]
+            print(f"Key: {key}, Value: {value}")
 
