@@ -118,9 +118,8 @@ grid_dict = generate_grid(grid_width, grid_height, wall_matrix)
 
 update_walls_to_doors(grid_dict, puertas)
 
-for key, value in grid_dict.items():
-    # print("\n")
-    print(f"Cell {key}: {value}")
+print(f"grid_dict: {grid_dict}")
+
 
 def visualize_grid(grid_width, grid_height, cell_walls):
     fig, ax = plt.subplots(figsize=(grid_width, grid_height))
@@ -223,5 +222,4 @@ def visualize_grid_with_doors(grid_width, grid_height, cell_walls, grid_dict):
     plt.show()
 
 # visualize_grid(grid_width, grid_height, wall_matrix)
-
-visualize_grid_with_doors(grid_width, grid_height, wall_matrix, grid_dict)
+# visualize_grid_with_doors(grid_width, grid_height, wall_matrix, grid_dict)

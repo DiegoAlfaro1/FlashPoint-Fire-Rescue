@@ -1,7 +1,7 @@
 import random
 from typing import List, Tuple, Dict, Set
 from mesa import Model, Agent
-from mesa.space import MultiGrid
+from mesa.space import MultiGrid, SingleGrid
 from mesa.time import RandomActivation
 import matplotlib.pyplot as plt
 
@@ -154,9 +154,8 @@ class FlashPointModel(Model):
 
     '''Setup and initialization'''
     def __init__(self, width: int, height: int, wall_matrix,victims,fire, doors: List[Tuple[Tuple[int, int], Tuple[int, int]]],n_agents: int = 6,):
-        self.grid = MultiGrid(width, height, torus=False)
+        self.grid = SingleGrid(height,width, torus=False)
         self.schedule = RandomActivation(self)
-        # self.walls: List[Wall] = []
         self.doors = set(doors) if doors else set()
         self.damage_markers = 0
         self.rescued_victims = 0
@@ -167,21 +166,23 @@ class FlashPointModel(Model):
         self.building_cells = frozenset((x, y) for x in range(1, width + 1) for y in range(1, height + 1))
         self.n_agents = n_agents
 
+        self.exits: Set[Tuple[int, int]] = set()  # Add exits here
+        self.exits = set([(0, y) for y in range(height)] + [(width-1, y) for y in range(height)] + 
+                 [(x, 0) for x in range(width)] + [(x, height-1) for x in range(width)])
+
         self.fire: Set[Tuple[int, int]] = set()
         self.smoke: Set[Tuple[int, int]] = set()
         self.pois: Dict[Tuple[int, int], Dict[str, bool]] = {}
         self.poi_count = 0
-        self.exits: Set[Tuple[int, int]] = set()  # Add exits here
 
-        self.exits = set([(0, y) for y in range(height)] + [(width-1, y) for y in range(height)] + 
-                 [(x, 0) for x in range(width)] + [(x, height-1) for x in range(width)])
-        
         self.grid_structure = {}
         self.wall_health = {}
         self.initial_victims = victims
         self.initial_fire = fire
         self.width = width
         self.height = height
+
+        self.agents = []
 
         self.setup_board(wall_matrix, victims, fire)
 
@@ -200,13 +201,17 @@ class FlashPointModel(Model):
         self.update_walls_to_doors(self.grid_structure, self.doors)
 
 
-        # Add firefighters (keep existing code)
         for i in range(self.n_agents):
             firefighter = FirefighterAgent(i, self)
             self.schedule.add(firefighter)
-            x, y = self.random.randrange(self.grid.width), self.random.randrange(self.grid.height)
+            while True:
+                x, y = self.random.randrange(1, self.grid.width), self.random.randrange(self.grid.height)
+                if self.grid.is_cell_empty((x, y)):
+                    break
+
             self.grid.place_agent(firefighter, (x, y))
             firefighter.position = (x, y)
+            self.agents.append(firefighter)
 
         for i in range(len(victims)):
             self.add_initial_victimas(victims)
@@ -253,7 +258,6 @@ class FlashPointModel(Model):
     def add_victim(self, pos: Tuple[int, int]) -> None:
         is_victim = self.victims.pop()
         self.pois[pos] = {"is_victim": is_victim, "revealed": False}
-        # print(f"Added {'victim' if is_victim else 'false alarm'} at {pos}")
         self.remove_fire_and_smoke(pos) 
 
     def check_firefighters_and_victims(self) -> None:
@@ -275,9 +279,7 @@ class FlashPointModel(Model):
         if pos in self.pois:
             if self.pois[pos]["is_victim"] and not self.pois[pos]["revealed"]:
                 self.lost_victims += 1
-                # print(f"A victim has been lost at {pos}! Total lost: {self.lost_victims}")
             del self.pois[pos]
-            # print(f"Removed POI at {pos}")
 
     '''walls and doors'''
 
@@ -364,8 +366,8 @@ class FlashPointModel(Model):
                 self.update_connection_cost(new_pos, pos, 1)
                 del self.wall_health[wall_key]
                 print(f"Wall between {pos} and {new_pos} has been destroyed.")
-            else:
-                print(f"Wall between {pos} and {new_pos} has been damaged. Health: {self.wall_health[wall_key]}")
+            # else:
+            #     print(f"Wall between {pos} and {new_pos} has been damaged. Health: {self.wall_health[wall_key]}")
         else:
             print(f"No wall found between {pos} and {new_pos}")
 
@@ -374,7 +376,6 @@ class FlashPointModel(Model):
             # Update the door to be an open path (cost 1)
             self.update_connection_cost(pos, new_pos, 1)
             self.update_connection_cost(new_pos, pos, 1)
-            print(f"Door between {pos} and {new_pos} has been destroyed.")
         else:
             print(f"No door found between {pos} and {new_pos}")
 
@@ -399,58 +400,38 @@ class FlashPointModel(Model):
 
     def step(self) -> None:
         print("\nStarting new step")
-        # print("Fire locations:", self.fire)
-        # print("Smoke locations:", self.smoke)
-        # print("POI locations:", self.pois)
         
         if self.running:
             self.advance_fire()
             self.reroll_pois()
             self.schedule.step()
             self.check_game_over()
-            print(f"Fire positions: {self.fire}")
         else:
             return
         
         print("Step completed")
-        # print("Fire locations:", self.fire)
-        # print("Smoke locations:", self.smoke)
-        # print("POI locations:", self.pois)
         print(f"Game state: {self.get_game_state()}")
 
     def advance_fire(self) -> None:
         fire_roll = (random.randint(1, 8), random.randint(1, 6))
-        print(f"Advancing fire: rolled {fire_roll}")
         self.place_smoke(fire_roll)
         self.handle_flashover()
         self.check_firefighters_and_victims()
 
-    def reroll_pois(self) -> None:
-        # print(f"Rerolling POIs. Current POIs: {self.pois}")
-        
-        # # Remove POIs that are in fire locations
-        # pois_to_remove = [pos for pos in self.pois if pos in self.fire]
-        # # print(f"POIs to remove: {pois_to_remove}")
-        # for pos in pois_to_remove:
-        #     self.lose_victim(pos)
-        
-        # Count revealed POIs
+    def reroll_pois(self) -> None:     
         revealed_pois = sum(1 for poi in self.pois.values() if poi["revealed"])
         
         # Add new POIs if necessary
         while len(self.pois) < self.max_pois_onBoard:
             poi_roll = (random.randint(1, 8), random.randint(1, 6))
-            print(f"Rolled POI: {poi_roll}")
             poi_pos = poi_roll
             if poi_pos not in self.pois:
                 self.add_victim(poi_pos)
                 # Remove fire and smoke from the POI position
                 self.remove_fire_and_smoke(poi_pos)
         
-        print(f"After rerolling, POIs: {self.pois}")
 
     def reveal_poi(self, pos: Tuple[int, int]) -> bool:
-        print(self.pois)
         if pos in self.pois:
             poi_info = self.pois[pos]
             if not poi_info["revealed"]:
@@ -458,7 +439,6 @@ class FlashPointModel(Model):
                 if poi_info["is_victim"]:
                     print(f"A victim has been found at {pos}")
                 else:
-                    print(f"False alarm at {pos}")
                     self.pois.pop(pos)
                 return poi_info["is_victim"]
         return False
@@ -474,15 +454,12 @@ class FlashPointModel(Model):
             adjacent_fire = any(self.is_adjacent(pos, fire_pos) for fire_pos in self.fire)
             if adjacent_fire:
                 self.fire.add(pos)
-                print(f"Placed fire at {pos} (adjacent to existing fire)")
             else:
                 self.smoke.add(pos)
-                print(f"Placed smoke at {pos}")
 
     def convert_smoke_to_fire(self, pos: Tuple[int, int]) -> None:
         self.smoke.remove(pos)
         self.fire.add(pos)
-        print(f"Converted smoke to fire at {pos}")
         if pos in self.pois:
             self.lose_victim(pos)
 
@@ -528,7 +505,6 @@ class FlashPointModel(Model):
             self.convert_smoke_to_fire(pos)
         else:
             self.fire.add(pos)
-            print(f"Placed fire at {pos}")
         if pos in self.pois:
             self.lose_victim(pos)
 
@@ -544,34 +520,20 @@ class FlashPointModel(Model):
     def remove_fire_and_smoke(self, pos: Tuple[int, int]) -> None:
         if pos in self.fire:
             self.fire.remove(pos)
-            print(f"Removed fire at {pos} due to POI placement")
         if pos in self.smoke:
             self.smoke.remove(pos)
-            print(f"Removed smoke at {pos} due to POI placement")
 
-    '''Getters'''
-
-    def get_grid_dimensions(self) -> Tuple[int, int]:
-        return self.grid.width, self.grid.height
-
-    def get_fire_locations(self) -> List[Tuple[int, int]]:
-        return list(self.fire)
-
-    def get_smoke_locations(self) -> List[Tuple[int, int]]:
-        return list(self.smoke)
-
-    def get_poi_locations(self) -> Dict[Tuple[int, int], Dict[str, bool]]:
-        return {pos: info for pos, info in self.pois.items() if info["revealed"]}
-
-    def get_wall_info(self) -> List[Tuple[Tuple[int, int], Tuple[int, int], str, str]]:
-        return [(wall.cell1, wall.cell2, wall.orientation, wall.get_state()) for wall in self.walls]
-
-    def get_door_info(self) -> List[Tuple[Tuple[int, int], Tuple[int, int], str, str]]:
-        return [(door.cell1, door.cell2, door.orientation, door.get_state()) for door in self.doors]
-
-    def get_firefighter_info(self) -> List[Tuple[int, Tuple[int, int], int, bool]]:
-        return [(agent.unique_id, agent.get_position(), agent.get_ap(), agent.is_carrying_victim()) 
-                for agent in self.schedule.agents]
+    '''Funcion para genera el json'''
+    
+    def return_json(self):
+        print(f"Grid actual {self.grid_structure}")
+        print("\n")
+        print(f"Paredes no derrumbadas y su salud: {self.wall_health}")
+        print(f"Ubicacion del fuego: {self.fire}")
+        print(f"Ubicacion del humo: {self.smoke}")
+        print(f"Ubicacion de los pois: {self.pois}")
+        for agent in range(len(self.agents)):
+            print(f"Ubicacion de los agentes: {self.agents[agent].position}")
 
     def get_game_state(self) -> Dict[str, int]:
         return {
@@ -702,9 +664,9 @@ def visualize_grid_with_doors(GRID_WIDTH, GRID_HEIGTH, cell_walls, grid_dict):
 if __name__ == "__main__":
     model = FlashPointModel(GRID_WIDTH,GRID_HEIGHT,wall_matrix,victims,fuego,puertas)
     i =0
-    while model.running and i < 100: 
+
+    model.return_json()
+    while model.running and  i < 100: 
         print(f"\n--- Step {i} ---")
         model.step()
         i+=1
-
-
