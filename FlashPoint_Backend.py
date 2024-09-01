@@ -174,6 +174,8 @@ class FlashPointModel(Model):
         self.running = True
         self.building_cells = frozenset((x, y) for x in range(1, width + 1) for y in range(1, height + 1))
         self.n_agents = n_agents
+        self.ff_ids=[]
+
 
         self.exits = exits
         self.fire: Set[Tuple[int, int]] = set()
@@ -206,13 +208,15 @@ class FlashPointModel(Model):
         # Process the doors
         self.update_walls_to_doors(self.grid_structure, self.doors)
 
+        for i in range(len(fire)):
+            self.fire.add(fire[i])
 
         for i in range(self.n_agents):
             firefighter = FirefighterAgent(i, self)
             self.schedule.add(firefighter)
             while True:
                 x, y = self.random.randrange(1, self.grid.width), self.random.randrange(self.grid.height)
-                if self.grid.is_cell_empty((x, y)):
+                if self.grid.is_cell_empty((x, y)) and (x, y) not in self.fire and (x, y) not in self.pois:
                     break
 
             self.grid.place_agent(firefighter, (x, y))
@@ -222,8 +226,7 @@ class FlashPointModel(Model):
         for i in range(len(victims)):
             self.add_initial_victimas(victims)
 
-        for i in range(len(fire)):
-            self.fire.add(fire[i])
+
 
         #falta poner donde van a estar las entradas
 
@@ -266,21 +269,50 @@ class FlashPointModel(Model):
         self.pois[pos] = {"is_victim": is_victim, "revealed": False}
         self.remove_fire_and_smoke(pos) 
 
-    def check_firefighters_and_victims(self) -> None:
-        flag = True
-        counter = 0 #temporal
-        ff_ids=[]
+    def check_firefighters_and_victims(self,actual_step) -> None:
         print("Checking firefighters and victims")
+        agents_to_remove = []
+        flag = True
+
+        # Collect agents to remove
         for agent in self.agents:
             if isinstance(agent, FirefighterAgent) and agent.position in self.fire:
-                ff_ids.append(agent.unique_id)
-                print("Firefighter in fire")
-                self.agents.remove(agent)
-                self.schedule.remove(agent)
-                print(f"Firefighter {agent.unique_id} has been removed")
-                print(ff_ids)
-                # while flag:
-                #     x,y = random.choice(self.exits)
+                self.ff_ids.append(agent.unique_id)
+                print(f"Firefighter in fire in {agent.position}")
+                print(self.ff_ids)
+                agents_to_remove.append(agent)
+
+        # Remove agents outside the loop
+        for agent in agents_to_remove:
+            self.grid.remove_agent(agent)
+            self.schedule.remove(agent)
+            self.agents.remove(agent)
+
+        # Check if less than 6 firefighter agents exist
+        num_firefighters = len([agent for agent in self.agents if isinstance(agent, FirefighterAgent)])
+
+        # Add new agents if conditions are met
+        attempt_counter = 0
+        while flag and num_firefighters < 6:
+            x, y = random.randint(1, 6), random.randint(1, 8)
+            attempt_counter += 1
+
+            if self.grid.is_cell_empty((x, y)) and (x, y) not in self.fire and (x, y) not in self.pois:
+                if actual_step % 2 == 0 and self.ff_ids:
+                    new_id = self.ff_ids.pop()
+                    new_agent = FirefighterAgent(new_id, self)
+                    self.schedule.add(new_agent)
+                    self.grid.place_agent(new_agent, (x, y))
+                    self.agents.append(new_agent)
+                    num_firefighters += 1
+                    print(f"New firefighter added at {x}, {y}")
+                    print(self.ff_ids)
+                flag = False
+            
+            # Break the loop after 20 attempts
+            if attempt_counter >= 20:
+                print("Unable to place a new firefighter after 20 attempts.")
+                break
 
         
         for pos in list(self.pois.keys()):
@@ -374,7 +406,6 @@ class FlashPointModel(Model):
 
         return any(adj == new_pos and cost == 2 for adj, cost in self.grid_structure[pos])
 
-
     def damage_wall(self, pos: Tuple[int, int], new_pos: Tuple[int, int]) -> None:
         if self.wall_in_direction(pos, new_pos):
             wall_key = (pos, new_pos) if (pos, new_pos) in self.wall_health else (new_pos, pos)
@@ -418,12 +449,16 @@ class FlashPointModel(Model):
         elif self.rescued_victims == 7:
             print("Game Over: All victims accounted for!")
             self.running = False
+        elif len(self.agents) == 0:
+            print("Game Over: No more firefighters left!")
+            self.running = False
 
-    def step(self) -> None:
+    def step(self,actual_step) -> None:
         print("\nStarting new step")
         
         if self.running:
             self.advance_fire()
+            self.check_firefighters_and_victims(actual_step)
             self.reroll_pois()
             self.schedule.step()
             self.check_game_over()
@@ -437,7 +472,6 @@ class FlashPointModel(Model):
         fire_roll = (random.randint(1, 6), random.randint(1, 8))
         self.place_smoke(fire_roll)
         self.handle_flashover()
-        self.check_firefighters_and_victims()
 
     def reroll_pois(self) -> None:     
         revealed_pois = sum(1 for poi in self.pois.values() if poi["revealed"])
@@ -692,7 +726,7 @@ if __name__ == "__main__":
     model.return_json()
     while model.running and  i < 100: 
         print(f"\n--- Step {i} ---")
-        model.step()
+        model.step(i)
         # if i % 10 == 0:
         #     model.return_json()
         #     # visualize_grid_with_doors(GRID_WIDTH, GRID_HEIGHT, wall_matrix, model.grid_structure,i)
