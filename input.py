@@ -58,14 +58,16 @@ print(f"entrada: {entrada}")
 grid_width = 8
 grid_height = 6
 
-def generate_grid(grid_width, grid_height, cell_walls, exits):
+def generate_grid(grid_width, grid_height, cell_walls,exits):
     grid_dict = {}
+    out_of_bounds_dict = {}
 
     for i in range(grid_height):
         for j in range(grid_width):
             cell_key = (i+1, j+1)
             walls = cell_walls[i][j]
             neighbors = []
+            out_of_bounds_neighbor_list = []
 
             # Check UP
             if i > 0:  # Not the first row
@@ -74,6 +76,9 @@ def generate_grid(grid_width, grid_height, cell_walls, exits):
                 out_of_bounds_neighbor = (i, j+1)
                 if cell_key in exits:
                     print(f"Cell {cell_key} is connected to out-of-bounds exit at {out_of_bounds_neighbor} (UP)")
+                    out_of_bounds_neighbor_list.append([(i, j+1), 2])
+                else:
+                    out_of_bounds_neighbor_list.append([(i, j+1), 5 if walls[0] == '1' else 1])
 
             # Check LEFT
             if j > 0:  # Not the first column
@@ -81,7 +86,10 @@ def generate_grid(grid_width, grid_height, cell_walls, exits):
             else:
                 out_of_bounds_neighbor = (i+1, j)
                 if cell_key in exits:
-                    print(f"Cell {cell_key} is connected to out-of-bounds exit at {out_of_bounds_neighbor} (LEFT)")
+                    print(f"Cell {cell_key} is connected to out-of-bounds exit at {out_of_bounds_neighbor} (UP)")
+                    out_of_bounds_neighbor_list.append([(i+1, j), 2])
+                else:
+                    out_of_bounds_neighbor_list.append([(i, j), 5 if walls[0] == '1' else 1])
 
             # Check DOWN
             if i < grid_height - 1:  # Not the last row
@@ -90,6 +98,10 @@ def generate_grid(grid_width, grid_height, cell_walls, exits):
                 out_of_bounds_neighbor = (i+2, j+1)
                 if cell_key in exits:
                     print(f"Cell {cell_key} is connected to out-of-bounds exit at {out_of_bounds_neighbor} (DOWN)")
+                    out_of_bounds_neighbor_list.append([(i+2, j+1), 2])
+                else:
+                    out_of_bounds_neighbor_list.append([(i+2, j+1), 5 if walls[0] == '1' else 1])
+
 
             # Check RIGHT
             if j < grid_width - 1:  # Not the last column
@@ -98,10 +110,15 @@ def generate_grid(grid_width, grid_height, cell_walls, exits):
                 out_of_bounds_neighbor = (i+1, j+2)
                 if cell_key in exits:
                     print(f"Cell {cell_key} is connected to out-of-bounds exit at {out_of_bounds_neighbor} (RIGHT)")
+                    out_of_bounds_neighbor_list.append([(i+1, j+2), 2])
+                else:
+                    out_of_bounds_neighbor_list.append([(i+1, j+2), 5 if walls[0] == '1' else 1])
+
 
             grid_dict[cell_key] = neighbors
+            out_of_bounds_dict[cell_key] = out_of_bounds_neighbor_list
 
-    return grid_dict
+    return [grid_dict, out_of_bounds_dict]
 
 def update_walls_to_doors(grid_dict, door_pairs):
     for (cell1, cell2) in door_pairs:
@@ -130,11 +147,12 @@ def update_wall_value(grid_dict, cell1, cell2, wall_index1, wall_index2):
         if neighbor[0] == cell1 and neighbor[1] == 5:
             grid_dict[cell2][i][1] = 2
 
-grid_dict = generate_grid(grid_width, grid_height, wall_matrix,entrada)
+grid_dict,out_of_bounds_dict = generate_grid(grid_width, grid_height, wall_matrix,entrada)
 
 update_walls_to_doors(grid_dict, puertas)
 
-print(f"grid_dict: {grid_dict}")
+# print(f"grid_dict: {grid_dict}")
+print(f"out_of_bounds_dict: {out_of_bounds_dict}")
 
 '''
 

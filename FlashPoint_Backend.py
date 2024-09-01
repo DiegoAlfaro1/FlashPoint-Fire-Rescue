@@ -5,7 +5,6 @@ from mesa.space import MultiGrid, SingleGrid
 from mesa.time import RandomActivation
 import matplotlib.pyplot as plt
 
-#problema con la generacion de celdas, parece que esta interpretando erroneamente las entradas
 
 class FirefighterAgent(Agent):
     def __init__(self, unique_id: int, model: 'FlashPointModel'):
@@ -176,6 +175,7 @@ class FlashPointModel(Model):
         self.n_agents = n_agents
         self.ff_ids=[]
 
+        self.current_step = 0
 
         self.exits = exits
         self.fire: Set[Tuple[int, int]] = set()
@@ -184,6 +184,7 @@ class FlashPointModel(Model):
         self.poi_count = 0
 
         self.grid_structure = {}
+        self.ouf_of_bounds_grid_structure = {}
         self.wall_health = {}
         self.initial_victims = victims
         self.initial_fire = fire
@@ -198,7 +199,7 @@ class FlashPointModel(Model):
 
     def setup_board(self, wall_matrix: List[str],victims,fire) -> None:
 
-        self.grid_structure = self.generate_grid(self.width, self.height, wall_matrix)
+        self.grid_structure,self.ouf_of_bounds_grid_structure = self.generate_grid(self.width, self.height, wall_matrix, self.exits)
         
         for pos, connections in self.grid_structure.items():
             for adj, cost in connections:
@@ -335,34 +336,67 @@ class FlashPointModel(Model):
 
     # nueva generacion de grid y actualizacion de paredes a puertas
 
-    def generate_grid(self,grid_width, grid_height, cell_walls):
+    def generate_grid(self,grid_width, grid_height, cell_walls,exits):
         grid_dict = {}
+        out_of_bounds_dict = {}
 
         for i in range(grid_height):
             for j in range(grid_width):
                 cell_key = (i+1, j+1)
                 walls = cell_walls[i][j]
                 neighbors = []
+                out_of_bounds_neighbor_list = []
 
                 # Check UP
                 if i > 0:  # Not the first row
                     neighbors.append([(i, j+1), 5 if walls[0] == '1' else 1])
-                
+                else:
+                    out_of_bounds_neighbor = (i, j+1)
+                    if cell_key in exits:
+                        print(f"Cell {cell_key} is connected to out-of-bounds exit at {out_of_bounds_neighbor} (UP)")
+                        out_of_bounds_neighbor_list.append([(i, j+1), 2])
+                    else:
+                        out_of_bounds_neighbor_list.append([(i, j+1), 5 if walls[0] == '1' else 1])
+
                 # Check LEFT
                 if j > 0:  # Not the first column
                     neighbors.append([(i+1, j), 5 if walls[1] == '1' else 1])
-                
+                else:
+                    out_of_bounds_neighbor = (i+1, j)
+                    if cell_key in exits:
+                        print(f"Cell {cell_key} is connected to out-of-bounds exit at {out_of_bounds_neighbor} (UP)")
+                        out_of_bounds_neighbor_list.append([(i+1, j), 2])
+                    else:
+                        out_of_bounds_neighbor_list.append([(i, j), 5 if walls[0] == '1' else 1])
+
                 # Check DOWN
                 if i < grid_height - 1:  # Not the last row
                     neighbors.append([(i+2, j+1), 5 if walls[2] == '1' else 1])
-                
+                else:
+                    out_of_bounds_neighbor = (i+2, j+1)
+                    if cell_key in exits:
+                        print(f"Cell {cell_key} is connected to out-of-bounds exit at {out_of_bounds_neighbor} (DOWN)")
+                        out_of_bounds_neighbor_list.append([(i+2, j+1), 2])
+                    else:
+                        out_of_bounds_neighbor_list.append([(i+2, j+1), 5 if walls[0] == '1' else 1])
+
+
                 # Check RIGHT
                 if j < grid_width - 1:  # Not the last column
                     neighbors.append([(i+1, j+2), 5 if walls[3] == '1' else 1])
+                else:
+                    out_of_bounds_neighbor = (i+1, j+2)
+                    if cell_key in exits:
+                        print(f"Cell {cell_key} is connected to out-of-bounds exit at {out_of_bounds_neighbor} (RIGHT)")
+                        out_of_bounds_neighbor_list.append([(i+1, j+2), 2])
+                    else:
+                        out_of_bounds_neighbor_list.append([(i+1, j+2), 5 if walls[0] == '1' else 1])
+
 
                 grid_dict[cell_key] = neighbors
+                out_of_bounds_dict[cell_key] = out_of_bounds_neighbor_list
 
-        return grid_dict
+        return [grid_dict, out_of_bounds_dict]
 
     def update_walls_to_doors(self,grid_dict, door_pairs):
         for (cell1, cell2) in door_pairs:
@@ -453,21 +487,16 @@ class FlashPointModel(Model):
             print("Game Over: No more firefighters left!")
             self.running = False
 
-    def step(self,actual_step) -> None:
-        print("\nStarting new step")
-        
+    def step(self):
         if self.running:
             self.advance_fire()
-            self.check_firefighters_and_victims(actual_step)
+            self.check_firefighters_and_victims(self.current_step)
             self.reroll_pois()
             self.schedule.step()
             self.check_game_over()
-        else:
-            return
-        
-        print("Step completed")
-        print(f"Game state: {self.get_game_state()}")
-
+            self.current_step += 1
+        return self.get_game_state()
+    
     def advance_fire(self) -> None:
         fire_roll = (random.randint(1, 6), random.randint(1, 8))
         self.place_smoke(fire_roll)
@@ -584,6 +613,8 @@ class FlashPointModel(Model):
     def return_json(self):
         print(f"Grid actual {self.grid_structure}")
         print("\n")
+        print(f"Grid out of bounds {self.ouf_of_bounds_grid_structure}")
+        print("\n")
         print(f"Paredes no derrumbadas y su salud: {self.wall_health}")
         print(f"Ubicacion del fuego: {self.fire}")
         print(f"Ubicacion del humo: {self.smoke}")
@@ -591,15 +622,19 @@ class FlashPointModel(Model):
         for agent in range(len(self.agents)):
             print(f"Ubicacion de los agentes: {self.agents[agent].position}, esta cargando vicima: {self.agents[agent].carrying_victim}")
 
-    def get_game_state(self) -> Dict[str, int]:
+    def get_game_state(self):
         return {
+            "step": self.current_step,
             "damage_markers": self.damage_markers,
             "rescued_victims": self.rescued_victims,
             "lost_victims": self.lost_victims,
             "running": self.running,
-            "Agent #": len(self.agents)
+            "agent_count": len(self.agents),
+            "fire_locations": list(self.fire),
+            "smoke_locations": list(self.smoke),
+            "poi_locations": [{"position": pos, "revealed": info["revealed"]} for pos, info in self.pois.items()],
+            "firefighter_positions": [{"id": agent.unique_id, "position": agent.position, "carrying_victim": agent.carrying_victim} for agent in self.agents if isinstance(agent, FirefighterAgent)]
         }
-
 
 GRID_WIDTH,GRID_HEIGHT = 8, 6
 wall_matrix = []
@@ -649,74 +684,6 @@ for line in lines[27:31]:
     if len(parts) == 2:
         x, y = int(parts[0]), int(parts[1])
         entrada.append((x, y))
-
-def visualize_grid_with_doors(GRID_WIDTH, GRID_HEIGTH, cell_walls, grid_dict,step):
-    fig, ax = plt.subplots(figsize=(GRID_WIDTH, GRID_HEIGTH))
-
-    # Draw the grid
-    for i in range(GRID_WIDTH + 1):
-        ax.plot([i, i], [0, GRID_HEIGTH], color="black")
-    for j in range(GRID_HEIGTH + 1):
-        ax.plot([0, GRID_WIDTH], [j, j], color="black")
-
-    # Draw the walls and doors
-    for i in range(GRID_HEIGTH):
-        for j in range(GRID_WIDTH):
-            walls = cell_walls[i][j]
-            x = j
-            y = GRID_HEIGTH - 1 - i  # Flip the y-axis for proper visualization
-
-            # Check for walls and doors in grid_dict for each cell
-            current_cell = (i+1, j+1)
-
-            for neighbor in grid_dict[current_cell]:
-                neighbor_cell, wall_value = neighbor
-
-                # Determine the direction to draw the wall/door
-                nx, ny = neighbor_cell
-                if nx == current_cell[0]:  # Same row, horizontal wall/door
-                    if ny > current_cell[1]:  # Neighbor is to the right
-                        if wall_value == 2:
-                            color = "blue" 
-                        elif wall_value == 5:
-                            color = "red"                        
-                        else:
-                            color = "black"
-                        ax.plot([x + 1, x + 1], [y, y + 1], color=color, linewidth=2)
-                    else:  # Neighbor is to the left
-                        if wall_value == 2:
-                            color = "blue" 
-                        elif wall_value == 5:
-                            color = "red"                        
-                        else:
-                            color = "black"
-                        ax.plot([x, x], [y, y + 1], color=color, linewidth=2)
-                elif ny == current_cell[1]:  # Same column, vertical wall/door
-                    if nx > current_cell[0]:  # Neighbor is below
-                        if wall_value == 2:
-                            color = "blue" 
-                        elif wall_value == 5:
-                            color = "red"                        
-                        else:
-                            color = "black"
-                        ax.plot([x, x + 1], [y, y], color=color, linewidth=2)
-                    else:  # Neighbor is above
-                        if wall_value == 2:
-                            color = "blue" 
-                        elif wall_value == 5:
-                            color = "red"                        
-                        else:
-                            color = "black"
-                        ax.plot([x, x + 1], [y + 1, y + 1], color=color, linewidth=2)
-
-    # Set the limits and aspect ratio
-    ax.set_title(f"Step {step}")
-    ax.set_xlim(0, GRID_WIDTH)
-    ax.set_ylim(0, GRID_HEIGTH)
-    ax.set_aspect('equal')
-    ax.axis('off')  # Turn off the axis
-
-    plt.show()
 
 # Example usage
 if __name__ == "__main__":
