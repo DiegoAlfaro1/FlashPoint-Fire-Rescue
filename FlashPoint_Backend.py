@@ -589,7 +589,7 @@ class FlashPointModel(Model):
         print(f"Ubicacion del humo: {self.smoke}")
         print(f"Ubicacion de los pois: {self.pois}")
         for agent in range(len(self.agents)):
-            print(f"Ubicacion de los agentes: {self.agents[agent].position}")
+            print(f"Ubicacion de los agentes: {self.agents[agent].position}, esta cargando vicima: {self.agents[agent].carrying_victim}")
 
     def get_game_state(self) -> Dict[str, int]:
         return {
@@ -727,7 +727,7 @@ if __name__ == "__main__":
     while model.running and  i < 100: 
         print(f"\n--- Step {i} ---")
         model.step(i)
-        # if i % 10 == 0:
-        #     model.return_json()
-        #     # visualize_grid_with_doors(GRID_WIDTH, GRID_HEIGHT, wall_matrix, model.grid_structure,i)
+        if i % 10 == 0:
+            model.return_json()
+            # visualize_grid_with_doors(GRID_WIDTH, GRID_HEIGHT, wall_matrix, model.grid_structure,i)
         i+=1
