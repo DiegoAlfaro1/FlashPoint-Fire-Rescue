@@ -53,12 +53,12 @@ for line in lines[27:31]:
 # print(f"victims: {victims}")
 # print(f"fuego: {fuego}")
 # print(f"puertas: {puertas}")
-# print(f"entrada: {entrada}")
+print(f"entrada: {entrada}")
 
 grid_width = 8
 grid_height = 6
 
-def generate_grid(grid_width, grid_height, cell_walls):
+def generate_grid(grid_width, grid_height, cell_walls, exits):
     grid_dict = {}
 
     for i in range(grid_height):
@@ -70,18 +70,34 @@ def generate_grid(grid_width, grid_height, cell_walls):
             # Check UP
             if i > 0:  # Not the first row
                 neighbors.append([(i, j+1), 5 if walls[0] == '1' else 1])
-            
+            else:
+                out_of_bounds_neighbor = (i, j+1)
+                if cell_key in exits:
+                    print(f"Cell {cell_key} is connected to out-of-bounds exit at {out_of_bounds_neighbor} (UP)")
+
             # Check LEFT
             if j > 0:  # Not the first column
                 neighbors.append([(i+1, j), 5 if walls[1] == '1' else 1])
-            
+            else:
+                out_of_bounds_neighbor = (i+1, j)
+                if cell_key in exits:
+                    print(f"Cell {cell_key} is connected to out-of-bounds exit at {out_of_bounds_neighbor} (LEFT)")
+
             # Check DOWN
             if i < grid_height - 1:  # Not the last row
                 neighbors.append([(i+2, j+1), 5 if walls[2] == '1' else 1])
-            
+            else:
+                out_of_bounds_neighbor = (i+2, j+1)
+                if cell_key in exits:
+                    print(f"Cell {cell_key} is connected to out-of-bounds exit at {out_of_bounds_neighbor} (DOWN)")
+
             # Check RIGHT
             if j < grid_width - 1:  # Not the last column
                 neighbors.append([(i+1, j+2), 5 if walls[3] == '1' else 1])
+            else:
+                out_of_bounds_neighbor = (i+1, j+2)
+                if cell_key in exits:
+                    print(f"Cell {cell_key} is connected to out-of-bounds exit at {out_of_bounds_neighbor} (RIGHT)")
 
             grid_dict[cell_key] = neighbors
 
@@ -114,11 +130,19 @@ def update_wall_value(grid_dict, cell1, cell2, wall_index1, wall_index2):
         if neighbor[0] == cell1 and neighbor[1] == 5:
             grid_dict[cell2][i][1] = 2
 
-grid_dict = generate_grid(grid_width, grid_height, wall_matrix)
+grid_dict = generate_grid(grid_width, grid_height, wall_matrix,entrada)
 
 update_walls_to_doors(grid_dict, puertas)
 
 print(f"grid_dict: {grid_dict}")
+
+'''
+
+si una celda tiene una salida entonces que se meta a un diccionario o lista de lista donde salga la coordenada y 
+un costo o la direccion donde esta esa salida, eso que lo use el agente para determinar si salir
+o que simpleente los agentes sepan que en esa celda hay una salida y que si llevan una victima cargada, prioricen salir
+
+'''
 
 
 def visualize_grid(grid_width, grid_height, cell_walls):

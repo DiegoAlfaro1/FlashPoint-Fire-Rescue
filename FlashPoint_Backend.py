@@ -26,6 +26,13 @@ class FirefighterAgent(Agent):
         return self.carrying_victim
 
     def move(self, new_pos: Tuple[int, int]) -> bool:
+        if not self.is_valid_position(new_pos):
+            return False
+
+        # Check if the target cell is empty
+        if not self.model.grid.is_cell_empty(new_pos):
+            return False
+
         ap_cost = 2 if new_pos in self.model.fire else 1
         if self.carrying_victim:
             ap_cost = 2
@@ -42,7 +49,7 @@ class FirefighterAgent(Agent):
             
             if self.carrying_victim and new_pos in self.model.exits:
                 self.rescue_victim()
-            
+
             return True
         return False
 
@@ -110,10 +117,10 @@ class FirefighterAgent(Agent):
 
     def move_action(self) -> bool:
         if self.carrying_victim:
-            exit_positions = [exit_pos for exit_pos in self.model.exits if self.model.grid.is_cell_empty(exit_pos)]
-            if exit_positions:
-                target = min(exit_positions, key=lambda pos: ((pos[0] - self.position[0])**2 + (pos[1] - self.position[1])**2)**0.5)
-                dx, dy = target[0] - self.position[0], target[1] - self.position[1]
+            # Select a movement direction towards an exit or simply move
+            for exit_pos in self.model.exits:
+                dx = exit_pos[0] - self.position[0]
+                dy = exit_pos[1] - self.position[1]
                 new_pos = (
                     self.position[0] + (1 if dx > 0 else -1 if dx < 0 else 0),
                     self.position[1] + (1 if dy > 0 else -1 if dy < 0 else 0)
@@ -127,8 +134,10 @@ class FirefighterAgent(Agent):
         adjacent_cells = self.model.grid.get_neighborhood(self.position, moore=False, include_center=True)
         for cell in adjacent_cells:
             if cell in self.model.pois and not self.model.pois[cell]["revealed"]:
-                if self.move(cell):
-                    return True
+                # Check if the cell is empty before moving
+                if self.model.grid.is_cell_empty(cell):
+                    if self.move(cell):
+                        return True
         return False
 
     def random_move(self) -> bool:
@@ -153,8 +162,8 @@ class FirefighterAgent(Agent):
 class FlashPointModel(Model):
 
     '''Setup and initialization'''
-    def __init__(self, width: int, height: int, wall_matrix,victims,fire, doors: List[Tuple[Tuple[int, int], Tuple[int, int]]],n_agents: int = 6,):
-        self.grid = SingleGrid(height,width, torus=False)
+    def __init__(self, width: int, height: int, wall_matrix,victims,fire, doors: List[Tuple[Tuple[int, int], Tuple[int, int]]],exits,n_agents: int = 6,):
+        self.grid = SingleGrid(height+1,width+1, torus=False)
         self.schedule = RandomActivation(self)
         self.doors = set(doors) if doors else set()
         self.damage_markers = 0
@@ -166,10 +175,7 @@ class FlashPointModel(Model):
         self.building_cells = frozenset((x, y) for x in range(1, width + 1) for y in range(1, height + 1))
         self.n_agents = n_agents
 
-        self.exits: Set[Tuple[int, int]] = set()  # Add exits here
-        self.exits = set([(0, y) for y in range(height)] + [(width-1, y) for y in range(height)] + 
-                 [(x, 0) for x in range(width)] + [(x, height-1) for x in range(width)])
-
+        self.exits = exits
         self.fire: Set[Tuple[int, int]] = set()
         self.smoke: Set[Tuple[int, int]] = set()
         self.pois: Dict[Tuple[int, int], Dict[str, bool]] = {}
@@ -261,9 +267,21 @@ class FlashPointModel(Model):
         self.remove_fire_and_smoke(pos) 
 
     def check_firefighters_and_victims(self) -> None:
-        # for agent in self.schedule.agents:
-        #     if isinstance(agent, FirefighterAgent) and agent.position in self.fire:
-        #         agent.knock_down()
+        flag = True
+        counter = 0 #temporal
+        ff_ids=[]
+        print("Checking firefighters and victims")
+        for agent in self.agents:
+            if isinstance(agent, FirefighterAgent) and agent.position in self.fire:
+                ff_ids.append(agent.unique_id)
+                print("Firefighter in fire")
+                self.agents.remove(agent)
+                self.schedule.remove(agent)
+                print(f"Firefighter {agent.unique_id} has been removed")
+                print(ff_ids)
+                # while flag:
+                #     x,y = random.choice(self.exits)
+
         
         for pos in list(self.pois.keys()):
             if pos in self.fire:
@@ -344,15 +362,18 @@ class FlashPointModel(Model):
 
     def wall_in_direction(self, pos: Tuple[int, int], new_pos: Tuple[int, int]) -> bool:
         if pos not in self.grid_structure:
-            print(f"Warning: Position {pos} not found in grid_structure")
+            print(f"Warning: Wall Position {pos} not found in grid_structure")
             return False
+
         return any(adj == new_pos and cost == 5 for adj, cost in self.grid_structure[pos])
 
     def door_in_direction(self, pos: Tuple[int, int], new_pos: Tuple[int, int]) -> bool:
         if pos not in self.grid_structure:
-            print(f"Warning: Position {pos} not found in grid_structure")
+            print(f"Warning: Door Position {pos} not found in grid_structure")
             return False
+
         return any(adj == new_pos and cost == 2 for adj, cost in self.grid_structure[pos])
+
 
     def damage_wall(self, pos: Tuple[int, int], new_pos: Tuple[int, int]) -> None:
         if self.wall_in_direction(pos, new_pos):
@@ -413,7 +434,7 @@ class FlashPointModel(Model):
         print(f"Game state: {self.get_game_state()}")
 
     def advance_fire(self) -> None:
-        fire_roll = (random.randint(1, 8), random.randint(1, 6))
+        fire_roll = (random.randint(1, 6), random.randint(1, 8))
         self.place_smoke(fire_roll)
         self.handle_flashover()
         self.check_firefighters_and_victims()
@@ -423,7 +444,7 @@ class FlashPointModel(Model):
         
         # Add new POIs if necessary
         while len(self.pois) < self.max_pois_onBoard:
-            poi_roll = (random.randint(1, 8), random.randint(1, 6))
+            poi_roll = (random.randint(1, 6), random.randint(1, 8))
             poi_pos = poi_roll
             if poi_pos not in self.pois:
                 self.add_victim(poi_pos)
@@ -477,6 +498,7 @@ class FlashPointModel(Model):
                     self.handle_shockwave(new_pos, (dx, dy))
                 else:
                     self.place_fire_or_flip_smoke(new_pos)
+
 
     def handle_shockwave(self, start_pos: Tuple[int, int], direction: Tuple[int, int]) -> None:
         current_pos = start_pos
@@ -540,7 +562,8 @@ class FlashPointModel(Model):
             "damage_markers": self.damage_markers,
             "rescued_victims": self.rescued_victims,
             "lost_victims": self.lost_victims,
-            "running": self.running
+            "running": self.running,
+            "Agent #": len(self.agents)
         }
 
 
@@ -593,7 +616,7 @@ for line in lines[27:31]:
         x, y = int(parts[0]), int(parts[1])
         entrada.append((x, y))
 
-def visualize_grid_with_doors(GRID_WIDTH, GRID_HEIGTH, cell_walls, grid_dict):
+def visualize_grid_with_doors(GRID_WIDTH, GRID_HEIGTH, cell_walls, grid_dict,step):
     fig, ax = plt.subplots(figsize=(GRID_WIDTH, GRID_HEIGTH))
 
     # Draw the grid
@@ -653,6 +676,7 @@ def visualize_grid_with_doors(GRID_WIDTH, GRID_HEIGTH, cell_walls, grid_dict):
                         ax.plot([x, x + 1], [y + 1, y + 1], color=color, linewidth=2)
 
     # Set the limits and aspect ratio
+    ax.set_title(f"Step {step}")
     ax.set_xlim(0, GRID_WIDTH)
     ax.set_ylim(0, GRID_HEIGTH)
     ax.set_aspect('equal')
@@ -662,11 +686,14 @@ def visualize_grid_with_doors(GRID_WIDTH, GRID_HEIGTH, cell_walls, grid_dict):
 
 # Example usage
 if __name__ == "__main__":
-    model = FlashPointModel(GRID_WIDTH,GRID_HEIGHT,wall_matrix,victims,fuego,puertas)
+    model = FlashPointModel(GRID_WIDTH,GRID_HEIGHT,wall_matrix,victims,fuego,puertas,entrada)
     i =0
 
     model.return_json()
     while model.running and  i < 100: 
         print(f"\n--- Step {i} ---")
         model.step()
+        # if i % 10 == 0:
+        #     model.return_json()
+        #     # visualize_grid_with_doors(GRID_WIDTH, GRID_HEIGHT, wall_matrix, model.grid_structure,i)
         i+=1
