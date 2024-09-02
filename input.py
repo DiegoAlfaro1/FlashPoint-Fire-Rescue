@@ -53,7 +53,7 @@ for line in lines[27:31]:
 # print(f"victims: {victims}")
 # print(f"fuego: {fuego}")
 # print(f"puertas: {puertas}")
-print(f"entrada: {entrada}")
+# print(f"entrada: {entrada}")
 
 grid_width = 8
 grid_height = 6
@@ -151,8 +151,8 @@ grid_dict,out_of_bounds_dict = generate_grid(grid_width, grid_height, wall_matri
 
 update_walls_to_doors(grid_dict, puertas)
 
-# print(f"grid_dict: {grid_dict}")
-print(f"out_of_bounds_dict: {out_of_bounds_dict}")
+print(f"grid_dict: {grid_dict}")
+# print(f"out_of_bounds_dict: {out_of_bounds_dict}")
 
 '''
 

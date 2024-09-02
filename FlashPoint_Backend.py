@@ -633,7 +633,7 @@ class FlashPointModel(Model):
             "running": self.running,
             "agent_count": len(self.agents),
             "fire_locations": list(self.fire),
-            "smoke_locations": list(self.smoke),
+            "smoke_locations": self.smoke,
             "poi_locations": [{"position": pos, "revealed": info["revealed"]} for pos, info in self.pois.items()],
             "firefighter_positions": [{"id": agent.unique_id, "position": agent.position, "carrying_victim": agent.carrying_victim} for agent in self.agents if isinstance(agent, FirefighterAgent)]
         }

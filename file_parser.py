@@ -32,6 +32,17 @@ def parse_game_config(file_path):
     
     #C:/Users/die_g/OneDrive/desktop/Multiagentes/FlashPoint-Fire-Rescue/input.txt
 
+    '''
+        curl -X POST http://localhost:5000/start_game \
+    -H "Content-Type: application/json" \
+    -d '{
+    "file_path": "input.txt",
+    "n_agents": 6
+    }'
+
+    '''
+
+
     return {
         'wall_matrix': wall_matrix,
         'victims': victims,
