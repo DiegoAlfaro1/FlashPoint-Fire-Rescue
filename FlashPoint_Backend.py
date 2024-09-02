@@ -693,7 +693,7 @@ if __name__ == "__main__":
     model.return_json()
     while model.running and  i < 100: 
         print(f"\n--- Step {i} ---")
-        model.step(i)
+        model.step()
         if i % 10 == 0:
             model.return_json()
             # visualize_grid_with_doors(GRID_WIDTH, GRID_HEIGHT, wall_matrix, model.grid_structure,i)
