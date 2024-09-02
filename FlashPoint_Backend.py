@@ -625,6 +625,8 @@ class FlashPointModel(Model):
     def get_game_state(self):
         return {
             "step": self.current_step,
+            "grid_structure": self.grid_structure,
+            "out_of_bounds_grid_structure": self.ouf_of_bounds_grid_structure,
             "damage_markers": self.damage_markers,
             "rescued_victims": self.rescued_victims,
             "lost_victims": self.lost_victims,
