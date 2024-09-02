@@ -10,8 +10,8 @@ public class GameController : MonoBehaviour
     {
         httpService = GetComponent<HTTPService>();
 
-        // Start the game
-        StartCoroutine(httpService.StartGame("input.txt", 6, OnGameStarted));
+        // Start the game without parameters
+        StartCoroutine(httpService.StartGame(OnGameStarted));
     }
 
     private void OnGameStarted(string response)
