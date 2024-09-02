@@ -22,12 +22,8 @@ def convert_to_json_serializable(obj):
 def start_game():
     global current_game
     
-    # Try to get JSON data regardless of Content-Type header
-    data = request.get_json(silent=True)
-    
-    file_path = 'input.txt'  # Allow file path to be passed in request
-    if not file_path:
-        return jsonify({"error": "File path not provided"}), 400
+    # Direct path to the input file
+    file_path = 'input.txt'
     
     try:
         config = parse_game_config(file_path)
@@ -41,7 +37,6 @@ def start_game():
         n_agents = 6
         
         current_game = FlashPointModel(width, height, wall_matrix, victims, fire, doors, exits, n_agents)
-        
         return jsonify({"message": "Game started successfully"}), 200
     except FileNotFoundError:
         return jsonify({"error": f"Config file not found: {file_path}"}), 404
@@ -58,8 +53,7 @@ def step():
     
     try:
         current_game.step()
-        game_state = current_game.get_game_state()
-        return jsonify(convert_to_json_serializable(game_state)), 200
+        return jsonify({"message": "Simulation advanced by one step"}), 200
     except Exception as e:
         return jsonify({"error": f"Failed to perform step: {str(e)}"}), 500
 
