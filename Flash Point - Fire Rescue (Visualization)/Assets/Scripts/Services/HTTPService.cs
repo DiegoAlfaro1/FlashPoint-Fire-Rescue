@@ -18,6 +18,7 @@ public class HTTPService : MonoBehaviour
         });
 
         // Create the request
+        // TODO: Evaluate if it's necessary to use PostWwwForm
         using (UnityWebRequest request = UnityWebRequest.Post(serverUrl + "/start_game", jsonData))
         {
             request.SetRequestHeader("Content-Type", "application/json");
