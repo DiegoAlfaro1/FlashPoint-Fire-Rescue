@@ -1,20 +1,22 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class GameState
+[Serializable]
+public class GameState // TODO: Deal with the uncompability of Dictionaries with JSON
 {
-    public int Step { get; set; }
-    public List<List<int>> GridStructure { get; set; }
-    public List<List<int>> OutOfBoundsGridStructure { get; set; }
-    public int DamageMarkers { get; set; }
-    public int RescuedVictims { get; set; }
-    public int LostVictims { get; set; }
-    public bool Running { get; set; }
-    public int AgentCount { get; set; }
-    public List<Vector2> FireLocations { get; set; }
-    public List<Vector2> SmokeLocations { get; set; }
-    public List<POI> PoiLocations { get; set; }
-    public List<Firefighter> FirefighterPositions { get; set; }
+    public int Step;
+    public List<List<int>> GridStructure;
+    public List<List<int>> OutOfBoundsGridStructure;
+    public int DamageMarkers;
+    public int RescuedVictims;
+    public int LostVictims;
+    public bool Running;
+    public int AgentCount;
+    public List<Vector2> FireLocations;
+    public List<Vector2> SmokeLocations;
+    public List<POI> PoiLocations;
+    public List<Firefighter> FirefighterPositions;
 
     public GameState()
     {
@@ -28,15 +30,18 @@ public class GameState
 }
 
 // Auxiliar Classes for Other Game Objects
+
+[Serializable]
 public class POI
 {
-    public Vector2 Position { get; set; }
-    public bool Revealed { get; set; }
+    public Vector2 Position;
+    public bool Revealed;
 }
 
+[Serializable]
 public class Firefighter
 {
-    public int Id { get; set; }
-    public Vector2 Position { get; set; }
-    public bool CarryingVictim { get; set; }
+    public int Id;
+    public Vector2 Position;
+    public bool CarryingVictim;
 }
