@@ -8,7 +8,7 @@ public class TerrainGenerator : MonoBehaviour
     public GameObject leftBorderTilePrefab;   // Left side border tile
     public GameObject rightBorderTilePrefab;  // Right side border tile
     public GameObject topBottomBorderTilePrefab;  // Top and bottom border tiles
-    public GameObject[] centerTilePrefabs;  // Center tiles for each room
+    public GameObject centerTilePrefab;  // Center tile
 
     // Grid configuration variables
     public int innerGridX; // Set via Inspector for the inner grid size
@@ -60,7 +60,7 @@ public class TerrainGenerator : MonoBehaviour
         if (x == totalGridX - 1) return rightBorderTilePrefab;  // Right border
         if (z == 0 || z == totalGridZ - 1) return topBottomBorderTilePrefab;  // Upper and lower borders
 
-        return centerTilePrefabs[0];  // Center tiles (modifiable by room)
+        return centerTilePrefab;  // Center tile
     }
 
     void Update()
