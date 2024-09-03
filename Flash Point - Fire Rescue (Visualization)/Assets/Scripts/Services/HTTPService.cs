@@ -13,7 +13,7 @@ public class HTTPService : MonoBehaviour
 
         WWWForm form = new WWWForm();
 
-        // Create a simple POST request to start the game (using PostWwwForm)
+        // Create a simple POST request to start the game
         using (UnityWebRequest www = UnityWebRequest.Post(serverUrl + "/start_game", form))
         {
             yield return www.SendWebRequest();
@@ -63,6 +63,31 @@ public class HTTPService : MonoBehaviour
             else
             {
                 Debug.LogError("Error while obtaining the state of the game: " + request.error);
+            }
+        }
+    }
+
+    // Method for advancing a step in the simulation
+    public IEnumerator AdvanceStep(Action<String> callback)
+    {
+
+        WWWForm form = new WWWForm();
+
+        // Create a simple POST request to start the game
+        using (UnityWebRequest www = UnityWebRequest.Post(serverUrl + "/step", form))
+        {
+            yield return www.SendWebRequest();
+
+            if (www.result != UnityWebRequest.Result.Success)
+            {
+                Debug.LogError("Error while starting the game: " + www.error);
+                Debug.LogError("Response Code: " + www.responseCode);
+                Debug.LogError("Response Text: " + www.downloadHandler.text);
+            }
+            else
+            {
+                Debug.Log("The game has been correctly advanced: " + www.downloadHandler.text);
+                callback?.Invoke(www.downloadHandler.text);
             }
         }
     }
