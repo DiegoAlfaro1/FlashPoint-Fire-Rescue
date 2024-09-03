@@ -1,7 +1,7 @@
 using System.Collections;
 using UnityEngine;
 using UnityEngine.Networking;
-using System;
+using Newtonsoft.Json; // Lifesaver for handling JSON data
 
 public class HTTPService : MonoBehaviour
 {
@@ -10,7 +10,6 @@ public class HTTPService : MonoBehaviour
     // Method for starting the game
     public IEnumerator StartGame(Action<string> callback)
     {
-
         WWWForm form = new WWWForm();
 
         // Create a simple POST request to start the game
@@ -33,7 +32,7 @@ public class HTTPService : MonoBehaviour
     }
 
     // Method for getting the game state
-    public IEnumerator GetGameState(Action<GameState> callback)
+    public IEnumerator GetGameState(System.Action<GameState> callback)
     {
         using (UnityWebRequest request = UnityWebRequest.Get(serverUrl + "/game_state"))
         {
@@ -47,22 +46,23 @@ public class HTTPService : MonoBehaviour
                 {
                     try
                     {
-                        GameState gameState = JsonUtility.FromJson<GameState>(jsonResponse);
+                        // Use Json.NET to deserialize directly to GameState
+                        GameState gameState = JsonConvert.DeserializeObject<GameState>(jsonResponse);
                         callback?.Invoke(gameState);
                     }
-                    catch (Exception e)
+                    catch (JsonException e)
                     {
-                        Debug.LogError("Error while analyzing the state of the game: " + e.Message);
+                        Debug.LogError("Error while parsing the game state: " + e.Message);
                     }
                 }
                 else
                 {
-                    Debug.LogError("Empty response while trying to get the state of the game.");
+                    Debug.LogError("Empty response while trying to get the game state.");
                 }
             }
             else
             {
-                Debug.LogError("Error while obtaining the state of the game: " + request.error);
+                Debug.LogError("Error while obtaining the game state: " + request.error);
             }
         }
     }
@@ -70,7 +70,6 @@ public class HTTPService : MonoBehaviour
     // Method for advancing a step in the simulation
     public IEnumerator AdvanceStep(Action<String> callback)
     {
-
         WWWForm form = new WWWForm();
 
         // Create a simple POST request to start the game
