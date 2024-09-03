@@ -624,18 +624,18 @@ class FlashPointModel(Model):
 
     def get_game_state(self):
         return {
-            "step": self.current_step,
-            "grid_structure": self.grid_structure,
-            "out_of_bounds_grid_structure": self.ouf_of_bounds_grid_structure,
-            "damage_markers": self.damage_markers,
-            "rescued_victims": self.rescued_victims,
-            "lost_victims": self.lost_victims,
-            "running": self.running,
-            "agent_count": len(self.agents),
-            "fire_locations": list(self.fire),
-            "smoke_locations": self.smoke,
-            "poi_locations": [{"position": pos, "revealed": info["revealed"]} for pos, info in self.pois.items()],
-            "firefighter_positions": [{"id": agent.unique_id, "position": agent.position, "carrying_victim": agent.carrying_victim} for agent in self.agents if isinstance(agent, FirefighterAgent)]
+            "step": self.current_step, # int
+            "grid_structure": self.grid_structure, # dict
+            "out_of_bounds_grid_structure": self.ouf_of_bounds_grid_structure, # dict
+            "damage_markers": self.damage_markers, # int
+            "rescued_victims": self.rescued_victims, # int
+            "lost_victims": self.lost_victims, # int
+            "running": self.running, # bool
+            "agent_count": len(self.agents),  # int
+            "fire_locations": list(self.fire), # list(iterable: Iterable[_T@list],/)
+            "smoke_locations": self.smoke, # Set[Tuple[int, int]]
+            "poi_locations": [{"position": pos, "revealed": info["revealed"]} for pos, info in self.pois.items()], # List[Dict[str, Union[Tuple[int, int], bool]]]
+            "firefighter_positions": [{"id": agent.unique_id, "position": agent.position, "carrying_victim": agent.carrying_victim} for agent in self.agents if isinstance(agent, FirefighterAgent)] # List[Dict[str, Union[int, Tuple[int, int], bool]]]
         }
 
 GRID_WIDTH,GRID_HEIGHT = 8, 6
