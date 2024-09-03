@@ -7,6 +7,21 @@ app = Flask(__name__)
 # Global variable to store the current game state
 current_game = None
 
+def convert_to_json_compatible(obj):
+    # Converts complex Python data types to JSON-compatible types.
+    if isinstance(obj, dict):
+        # Convert all keys to strings and recursively apply conversion to values
+        return {str(k): convert_to_json_compatible(v) for k, v in obj.items()}
+    elif isinstance(obj, (list, tuple, set)):
+        # Convert tuples and sets to lists and recursively apply conversion
+        return [convert_to_json_compatible(i) for i in obj]
+    elif isinstance(obj, (int, float, str, bool)):
+        # Return primitive compatible data types as is
+        return obj
+    else:
+        # For any other non-compatible object type, convert to string
+        return str(obj)
+
 @app.route('/start_game', methods=['POST'])
 def start_game():
     global current_game
@@ -53,8 +68,12 @@ def game_state():
         return jsonify({"error": "No game in progress"}), 400
     
     try:
+        # Get the game state
         game_state = current_game.get_game_state()
-        return jsonify(game_state), 200
+        # Convert complex data types to JSON-compatible types
+        game_state_json_compatible = convert_to_json_compatible(game_state)
+        # Return the converted game state
+        return jsonify(game_state_json_compatible), 200
     except Exception as e:
         return jsonify({"error": f"Failed to retrieve game state: {str(e)}"}), 500
 
