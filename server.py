@@ -7,17 +7,6 @@ app = Flask(__name__)
 # Global variable to store the current game state
 current_game = None
 
-def convert_to_json_serializable(obj):
-    if isinstance(obj, (set, tuple)):
-        return list(obj)
-    elif isinstance(obj, dict):
-        return {str(key) if isinstance(key, tuple) else key: convert_to_json_serializable(value)
-                for key, value in obj.items()}
-    elif isinstance(obj, list):
-        return [convert_to_json_serializable(item) for item in obj]
-    else:
-        return obj
-
 @app.route('/start_game', methods=['POST'])
 def start_game():
     global current_game
@@ -65,22 +54,7 @@ def game_state():
     
     try:
         game_state = current_game.get_game_state()
-        # Convert specific elements that might need special handling
-        serializable_state = {
-            "step": game_state["step"],
-            "grid_structure": convert_to_json_serializable(game_state["grid_structure"]),
-            "out_of_bounds_grid_structure": convert_to_json_serializable(game_state["out_of_bounds_grid_structure"]),
-            "damage_markers": convert_to_json_serializable(game_state["damage_markers"]),
-            "rescued_victims": game_state["rescued_victims"],
-            "lost_victims": game_state["lost_victims"],
-            "running": game_state["running"],
-            "agent_count": game_state["agent_count"],
-            "fire_locations": game_state["fire_locations"],
-            "smoke_locations": convert_to_json_serializable(game_state["smoke_locations"]),
-            "poi_locations": game_state["poi_locations"],
-            "firefighter_positions": game_state["firefighter_positions"]
-        }
-        return jsonify(serializable_state), 200
+        return jsonify(game_state), 200
     except Exception as e:
         return jsonify({"error": f"Failed to retrieve game state: {str(e)}"}), 500
 
