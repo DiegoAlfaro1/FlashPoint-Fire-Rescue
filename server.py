@@ -45,7 +45,7 @@ def start_game():
     except Exception as e:
         return jsonify({"error": f"Failed to start game: {str(e)}"}), 500
 
-@app.route('/step', methods=['GET'])
+@app.route('/step', methods=['POST'])
 def step():
     global current_game
     if current_game is None:
