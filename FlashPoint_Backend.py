@@ -8,6 +8,13 @@ import matplotlib.pyplot as plt
 
 class FirefighterAgent(Agent):
     def __init__(self, unique_id: int, model: 'FlashPointModel'):
+        """
+        Inicializa un nuevo agente bombero.
+
+        Parámetros:
+        - unique_id: Identificador único del bombero.
+        - model: Instancia del modelo FlashPointModel en el que el bombero operará.
+        """
         super().__init__(unique_id, model)
         # Inicialización de atributos del agente bombero
         self.position: Tuple[int, int] = (0, 0)  # Posición inicial en el grid
@@ -17,19 +24,42 @@ class FirefighterAgent(Agent):
         self.carrying_victim = False  # Estado de si el agente está cargando una víctima
 
     def get_position(self) -> Tuple[int, int]:
-        """Devuelve la posición actual del bombero."""
+        """
+        Devuelve la posición actual del bombero.
+
+        Retorna:
+        - Tupla con las coordenadas (x, y) de la posición actual del bombero.
+        """
         return self.position
 
     def get_ap(self) -> int:
-        """Devuelve los puntos de acción actuales del bombero."""
-        return self.ap
+        """
+        Devuelve los puntos de acción actuales del bombero.
 
+        Retorna:
+        - Número entero que representa los puntos de acción actuales.
+        """
+        return self.ap
+    
     def is_carrying_victim(self) -> bool:
-        """Devuelve si el bombero está cargando una víctima."""
+        """
+        Devuelve si el bombero está cargando una víctima.
+
+        Retorna:
+        - Verdadero si el bombero está cargando una víctima, falso en caso contrario.
+        """
         return self.carrying_victim
 
     def move(self, new_pos: Tuple[int, int]) -> bool:
-        """Mueve el bombero a una nueva posición si es válida y hay suficientes puntos de acción."""
+        """
+        Mueve el bombero a una nueva posición si es válida y hay suficientes puntos de acción.
+
+        Parámetros:
+        - new_pos: Nueva posición a la que se desea mover el bombero.
+
+        Retorna:
+        - Verdadero si el movimiento fue exitoso, falso en caso contrario.
+        """
         if not self.is_valid_position(new_pos):
             return False
 
@@ -62,18 +92,30 @@ class FirefighterAgent(Agent):
         return False
 
     def reveal_poi(self, pos: Tuple[int, int]) -> None:
-        """Revela un punto de interés (POI) en una posición dada."""
+        """
+        Revela un punto de interés (POI) en una posición dada.
+
+        Parámetros:
+        - pos: Tupla con las coordenadas (x, y) del punto de interés a revelar.
+        """
         is_victim = self.model.reveal_poi(pos)
         if is_victim and not self.carrying_victim:
             self.carrying_victim = True  # El bombero comienza a cargar una víctima
 
     def rescue_victim(self) -> None:
-        """Rescata a la víctima si el bombero está en una salida."""
+        """
+        Rescata a la víctima si el bombero está en una salida.
+        """
         self.model.rescued_victims += 1  # Incrementa el contador de víctimas rescatadas
         self.carrying_victim = False  # El bombero ya no lleva una víctima
 
     def open_close_door(self) -> bool:
-        """Abre o cierra una puerta adyacente si hay suficientes puntos de acción."""
+        """
+        Abre o cierra una puerta adyacente si hay suficientes puntos de acción.
+
+        Retorna:
+        - Verdadero si la acción fue exitosa, falso en caso contrario.
+        """
         for door in self.model.doors:
             if self.position in (door.cell1, door.cell2):
                 if self.ap >= 1:
@@ -83,7 +125,15 @@ class FirefighterAgent(Agent):
         return False
 
     def extinguish(self, target_pos: Tuple[int, int]) -> bool:
-        """Extingue fuego o humo en una posición objetivo si hay suficientes puntos de acción."""
+        """
+        Extingue fuego o humo en una posición objetivo si hay suficientes puntos de acción.
+
+        Parámetros:
+        - target_pos: Tupla con las coordenadas (x, y) de la posición a extinguir.
+
+        Retorna:
+        - Verdadero si la acción fue exitosa, falso en caso contrario.
+        """
         if target_pos in self.model.fire and self.ap >= 2:
             self.ap -= 2  # Extinguir fuego cuesta 2 puntos de acción
             self.model.fire.remove(target_pos)  # Remueve el fuego de la posición
@@ -95,7 +145,12 @@ class FirefighterAgent(Agent):
         return False
 
     def chop(self) -> bool:
-        """Daña una pared adyacente si hay suficientes puntos de acción."""
+        """
+        Daño una pared adyacente si hay suficientes puntos de acción.
+
+        Retorna:
+        - Verdadero si la acción fue exitosa, falso en caso contrario.
+        """
         for wall in self.model.walls:
             if self.position in (wall.cell1, wall.cell2):
                 if self.ap >= 2:
@@ -106,29 +161,43 @@ class FirefighterAgent(Agent):
         return False
 
     def step(self) -> None:
-        """Define el comportamiento del bombero en cada paso de la simulación."""
+        """
+        Define el comportamiento del bombero en cada paso de la simulación.
+        Este método se llama en cada paso del modelo y realiza las acciones 
+        del bombero en el siguiente orden de prioridad:
+        1. Moverse hacia una salida si está cargando una víctima.
+        2. Apagar fuego o humo.
+        3. Revelar puntos de interés (POIs) adyacentes.
+        4. Realizar un movimiento aleatorio.
+        """
         self.ap += self.saved_ap  # Añade los puntos de acción guardados al total
         self.saved_ap = 0  # Reinicia los puntos de acción guardados
 
         # Acciones de estrategia en orden de prioridad
         if self.carrying_victim and self.move_action():
-            return
+            return  # Si se movió con éxito hacia una salida, termina el paso
 
         if self.extinguish_action():
-            return
+            return  # Si extinguió fuego o humo con éxito, termina el paso
 
         if self.reveal_poi_action():
-            return
+            return  # Si reveló un POI con éxito, termina el paso
 
         if self.random_move():
-            return
+            return  # Si se movió aleatoriamente con éxito, termina el paso
 
         # Guarda los puntos de acción restantes para el próximo paso
-        self.saved_ap = min(self.ap, 4)
-        self.ap = 0
+        self.saved_ap = min(self.ap, 4)  # Limita los puntos de acción guardados a 4
+        self.ap = 0  # Establece los puntos de acción actuales a 0
 
     def move_action(self) -> bool:
-        """Acción de movimiento hacia una salida si el bombero lleva una víctima."""
+        """
+        Acción de movimiento hacia una salida si el bombero lleva una víctima.
+        Intenta moverse en dirección a una salida si el bombero está cargando una víctima.
+
+        Retorna:
+        - Verdadero si el movimiento fue exitoso, falso en caso contrario.
+        """
         if self.carrying_victim:
             # Selecciona una dirección de movimiento hacia una salida
             for exit_pos in self.model.exits:
@@ -144,7 +213,13 @@ class FirefighterAgent(Agent):
         return False
 
     def reveal_poi_action(self) -> bool:
-        """Acción de revelar un punto de interés (POI) adyacente."""
+        """
+        Acción de revelar un punto de interés (POI) adyacente.
+        Intenta revelar un POI en una celda adyacente si está vacía.
+
+        Retorna:
+        - Verdadero si se reveló un POI con éxito, falso en caso contrario.
+        """
         adjacent_cells = self.model.grid.get_neighborhood(self.position, moore=False, include_center=True)
         for cell in adjacent_cells:
             if cell in self.model.pois and not self.model.pois[cell]["revealed"]:
@@ -155,26 +230,51 @@ class FirefighterAgent(Agent):
         return False
 
     def random_move(self) -> bool:
-        """Movimiento aleatorio del bombero en direcciones posibles."""
-        directions = [(0, 1), (0, -1), (1, 0), (-1, 0)]
-        random.shuffle(directions)
+        """
+        Realiza un movimiento aleatorio del bombero en una dirección posible.
+        Baraja las direcciones posibles (arriba, abajo, izquierda, derecha) y
+        intenta mover al bombero a una celda vacía en una de esas direcciones.
+
+        Retorna:
+        - Verdadero si el movimiento fue exitoso, falso en caso contrario.
+        """
+        directions = [(0, 1), (0, -1), (1, 0), (-1, 0)]  # Direcciones posibles: derecha, izquierda, abajo, arriba
+        random.shuffle(directions)  # Baraja las direcciones aleatoriamente
+
         for dx, dy in directions:
             new_pos = (self.position[0] + dx, self.position[1] + dy)
+            # Verifica si la nueva posición es válida y está vacía
             if self.is_valid_position(new_pos) and self.model.grid.is_cell_empty(new_pos):
-                return self.move(new_pos)
-        return False
+                return self.move(new_pos)  # Intenta mover al bombero a la nueva posición
+        
+        return False  # No se pudo mover a ninguna dirección
 
     def is_valid_position(self, pos: Tuple[int, int]) -> bool:
-        """Verifica si una posición está dentro de los límites del grid."""
+        """
+        Verifica si una posición está dentro de los límites del grid.
+        
+        Argumentos:
+        - pos: La posición a verificar como una tupla (x, y).
+
+        Retorna:
+        - Verdadero si la posición está dentro de los límites del grid, falso en caso contrario.
+        """
         return 0 <= pos[0] < self.model.grid.width and 0 <= pos[1] < self.model.grid.height
 
     def extinguish_action(self) -> bool:
-        """Acción de extinguir fuego o humo en celdas adyacentes."""
+        """
+        Acción de extinguir fuego o humo en las celdas adyacentes.
+        Revisa las celdas adyacentes y, si hay fuego o humo, intenta extinguirlo.
+
+        Retorna:
+        - Verdadero si se extinguió con éxito fuego o humo, falso en caso contrario.
+        """
         adjacent_cells = self.model.grid.get_neighborhood(self.position, moore=False, include_center=True)
         for cell in adjacent_cells:
             if cell in self.model.fire or cell in self.model.smoke:
-                return self.extinguish(cell)
-        return False
+                return self.extinguish(cell)  # Intenta extinguir el fuego o humo en la celda adyacente
+        
+        return False  # No se pudo extinguir fuego o humo en ninguna celda adyacente
 
 class FlashPointModel(Model):
 
