@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 [Serializable]
-public class GameState // TODO: Deal with the uncompability of Dictionaries with JSON
+public class GameState
 {
     public int Step;
     public List<List<int>> GridStructure;
