@@ -2,7 +2,7 @@ using System;
 using System.Collections;
 using UnityEngine;
 using UnityEngine.Networking;
-using Newtonsoft.Json; // Lifesaver for handling JSON data
+using Newtonsoft.Json;
 
 public class HTTPService : MonoBehaviour
 {
@@ -49,7 +49,15 @@ public class HTTPService : MonoBehaviour
                     {
                         // Use Json.NET to deserialize directly to GameState
                         GameState gameState = JsonConvert.DeserializeObject<GameState>(jsonResponse);
-                        callback?.Invoke(gameState);
+
+                        if (gameState != null)
+                        {
+                            callback?.Invoke(gameState);
+                        }
+                        else
+                        {
+                            Debug.LogError("Failed to parse the game state: The result is null.");
+                        }
                     }
                     catch (JsonException e)
                     {
@@ -58,7 +66,7 @@ public class HTTPService : MonoBehaviour
                 }
                 else
                 {
-                    Debug.LogError("Empty response while trying to get the game state.");
+                    Debug.LogError("Empty response while trying to obtain the game state.");
                 }
             }
             else
@@ -80,7 +88,7 @@ public class HTTPService : MonoBehaviour
 
             if (www.result != UnityWebRequest.Result.Success)
             {
-                Debug.LogError("Error while starting the game: " + www.error);
+                Debug.LogError("Error while advancing the game: " + www.error);
                 Debug.LogError("Response Code: " + www.responseCode);
                 Debug.LogError("Response Text: " + www.downloadHandler.text);
             }
