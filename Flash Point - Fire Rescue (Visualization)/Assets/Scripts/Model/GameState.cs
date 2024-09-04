@@ -6,25 +6,25 @@ using UnityEngine;
 public class GameState
 {
     public int step;
-    public Dictionary<string, List<List<Vector2>>> grid_structure;
-    public Dictionary<string, List<List<Vector2>>> out_of_bounds_grid_structure;
+    public Dictionary<string, List<List<int>>> grid_structure;
+    public Dictionary<string, List<List<int>>> out_of_bounds_grid_structure;
     public int damage_markers;
     public int rescued_victims;
     public int lost_victims;
     public bool running;
     public int agent_count;
-    public List<Vector2> fire_locations;
-    public List<Vector2> smoke_locations;
+    public List<List<int>> fire_locations;
+    public List<List<int>> smoke_locations;
     public List<POI> poi_locations;
     public List<Firefighter> firefighter_positions;
 
     public GameState()
     {
-        // Initialize the data structures
-        grid_structure = new Dictionary<string, List<List<Vector2>>>();
-        out_of_bounds_grid_structure = new Dictionary<string, List<List<Vector2>>>();
-        fire_locations = new List<Vector2>();
-        smoke_locations = new List<Vector2>();
+        // Initialize data structures
+        grid_structure = new Dictionary<string, List<List<int>>>();
+        out_of_bounds_grid_structure = new Dictionary<string, List<List<int>>>();
+        fire_locations = new List<List<int>>();
+        smoke_locations = new List<List<int>>();
         poi_locations = new List<POI>();
         firefighter_positions = new List<Firefighter>();
     }
@@ -34,7 +34,7 @@ public class GameState
 [Serializable]
 public class POI
 {
-    public Vector2 position;
+    public List<int> position;
     public bool revealed;
 }
 
@@ -42,6 +42,6 @@ public class POI
 public class Firefighter
 {
     public int id;
-    public Vector2 position;
+    public List<int> position;
     public bool carrying_victim;
 }
