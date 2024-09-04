@@ -164,6 +164,7 @@ GameObject:
   - component: {fileID: 357939389}
   - component: {fileID: 357939391}
   - component: {fileID: 357939390}
+  - component: {fileID: 357939393}
   - component: {fileID: 357939392}
   m_Layer: 0
   m_Name: Game Manager
@@ -229,6 +230,26 @@ MonoBehaviour:
   gridOrigin: {x: 0, y: 0, z: 0}
   innerGridX: 8
   innerGridZ: 6
+--- !u!114 &357939393
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 357939388}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1d46178544bfda64a917cc42aecc516d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  leftBorderTilePrefab: {fileID: 7815546424738801744, guid: c34656e68d1263347858b025c8c4fe03, type: 3}
+  rightBorderTilePrefab: {fileID: 8650639413107412268, guid: df587b2e6a671fc45bad2adac95d03be, type: 3}
+  topBottomBorderTilePrefab: {fileID: 8650639413107412268, guid: df587b2e6a671fc45bad2adac95d03be, type: 3}
+  centerTilePrefab: {fileID: 6799295609370056479, guid: 41a301a690a141142930147d0a151b9c, type: 3}
+  innerGridX: 8
+  innerGridZ: 6
+  gridSpacing: 1
+  gridOrigin: {x: 0, y: 0, z: 0}
 --- !u!1 &422845710
 GameObject:
   m_ObjectHideFlags: 0
@@ -520,7 +541,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 965231845}
-  - component: {fileID: 965231846}
   m_Layer: 0
   m_Name: Resource System
   m_TagString: Untagged
@@ -543,26 +563,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 508165520}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &965231846
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 965231844}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1d46178544bfda64a917cc42aecc516d, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  leftBorderTilePrefab: {fileID: 7815546424738801744, guid: c34656e68d1263347858b025c8c4fe03, type: 3}
-  rightBorderTilePrefab: {fileID: 8650639413107412268, guid: df587b2e6a671fc45bad2adac95d03be, type: 3}
-  topBottomBorderTilePrefab: {fileID: 8650639413107412268, guid: df587b2e6a671fc45bad2adac95d03be, type: 3}
-  centerTilePrefab: {fileID: 6799295609370056479, guid: 41a301a690a141142930147d0a151b9c, type: 3}
-  innerGridX: 8
-  innerGridZ: 6
-  gridSpacing: 1
-  gridOrigin: {x: 0, y: 0, z: 0}
 --- !u!1 &996678865
 GameObject:
   m_ObjectHideFlags: 0
