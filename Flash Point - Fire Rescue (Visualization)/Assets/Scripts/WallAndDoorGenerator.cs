@@ -85,13 +85,13 @@ public class WallAndDoorGenerator : MonoBehaviour
                             // Determine object type and calculate position accordingly
                             if (connectionType == 5)
                             {
-                                Vector3 objectPosition = CalculatePosition(counterX, counterZ, direction, "Wall");
+                                Vector3 objectPosition = CalculatePosition(x, z, direction, "Wall");
                                 Quaternion rotation = (direction == "left" || direction == "right") ? Quaternion.Euler(0, 90, 0) : Quaternion.identity;
                                 InstantiateObject(objectPosition, rotation, wallPrefab);
                             }
                             else if (connectionType == 2)
                             {
-                                Vector3 objectPosition = CalculatePosition(counterX, counterZ, direction, "Door");
+                                Vector3 objectPosition = CalculatePosition(x, z, direction, "Door");
                                 Quaternion rotation = (direction == "left" || direction == "right") ? Quaternion.Euler(0, 90, 0) : Quaternion.identity;
                                 InstantiateObject(objectPosition, rotation, doorPrefab);
                             }
