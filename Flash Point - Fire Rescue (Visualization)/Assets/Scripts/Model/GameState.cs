@@ -6,8 +6,8 @@ using UnityEngine;
 public class GameState
 {
     public int step;
-    public Dictionary<string, List<List<int>>> grid_structure;
-    public Dictionary<string, List<List<int>>> out_of_bounds_grid_structure;
+    public Dictionary<string, List<List<object>>> grid_structure;
+    public Dictionary<string, List<List<object>>> out_of_bounds_grid_structure;
     public int damage_markers;
     public int rescued_victims;
     public int lost_victims;
@@ -21,8 +21,8 @@ public class GameState
     public GameState()
     {
         // Initialize data structures
-        grid_structure = new Dictionary<string, List<List<int>>>();
-        out_of_bounds_grid_structure = new Dictionary<string, List<List<int>>>();
+        grid_structure = new Dictionary<string, List<List<object>>>();
+        out_of_bounds_grid_structure = new Dictionary<string, List<List<object>>>();
         fire_locations = new List<List<int>>();
         smoke_locations = new List<List<int>>();
         poi_locations = new List<POI>();
