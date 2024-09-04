@@ -15,9 +15,9 @@ public class WallAndDoorGenerator : MonoBehaviour
             string cellKey = cellEntry.Key;
             List<List<object>> neighbors = cellEntry.Value;
 
-            Debug.Log($"Procesando la celda {cellKey}");
+            Debug.Log($"Processing cell {cellKey}");
 
-            // Recorrer la lista de vecinos de cada celda
+            // Iterate through the list of neighbors for each cell
             for (int i = 0; i < neighbors.Count; i++)
             {
                 List<object> neighborInfo = neighbors[i];
@@ -25,91 +25,110 @@ public class WallAndDoorGenerator : MonoBehaviour
                 if (neighborInfo.Count == 2)
                 {
                     List<object> position = neighborInfo[0] as List<object>;
-                    int connectionType = (int)(long)neighborInfo[1]; // Convertir a entero
+                    int connectionType = (int)(long)neighborInfo[1]; // Convert to integer
 
-                    // Determinar la dirección basada en el índice
+                    // Determine the direction based on the index
                     string direction = GetDirection(gridStructure, cellKey, i);
 
-                    Debug.Log($"Celda {cellKey} tiene un vecino en dirección {direction} con tipo de conexión: {connectionType}");
+                    Debug.Log($"Cell {cellKey} has a neighbor in direction {direction} with connection type: {connectionType}");
 
-                    // Instanciar objetos según el tipo de conexión
+                    // Instantiate objects according to the connection type
                     if (connectionType == 5)
                     {
-                        Debug.Log($"Instanciar un muro hacia {direction}.");
+                        Debug.Log($"Instantiate a wall towards {direction}.");
                         InstantiateObject(cellKey, direction, "Wall");
                     }
                     else if (connectionType == 2)
                     {
-                        Debug.Log($"Instanciar una puerta hacia {direction}.");
+                        Debug.Log($"Instantiate a door towards {direction}.");
                         InstantiateObject(cellKey, direction, "Door");
                     }
                 }
                 else
                 {
-                    Debug.LogError("La información del vecino no es válida o no contiene 2 elementos.");
+                    Debug.LogError("Neighbor information is invalid or does not contain 2 elements.");
                 }
             }
         }
     }
 
-    // Método para determinar la dirección basada en la celda, el índice y la estructura de la cuadrícula
+    // Method to determine the direction based on the cell, index, and grid structure
     string GetDirection(Dictionary<string, List<List<object>>> gridStructure, string cellKey, int index)
     {
-        // Obtener la posición de la celda actual
+        // Get the position of the current cell
         string[] parts = cellKey.Trim('(', ')').Split(',');
         int x = int.Parse(parts[0].Trim());
         int y = int.Parse(parts[1].Trim());
 
-        // Determinar la dirección basada en el índice y la posición de la celda
-        int totalRows = gridStructure.Count; // Número total de filas
-        int totalColumns = gridStructure[cellKey].Count; // Número total de columnas
+        // Determine the direction based on the index and cell position
+        int totalRows = gridStructure.Count; // Total number of rows
+        int totalColumns = gridStructure[cellKey].Count; // Total number of columns
 
-        if (index == 0) return (x == 1) ? "abajo" : "arriba";
-        else if (index == 1) return (y == 1) ? "derecha" : "izquierda";
-        else if (index == 2) return (x == totalRows) ? "arriba" : "abajo";
-        else if (index == 3) return (y == totalColumns) ? "izquierda" : "derecha";
+        if (index == 0) return (x == 1) ? "down" : "up";
+        else if (index == 1) return (y == 1) ? "right" : "left";
+        else if (index == 2) return (x == totalRows) ? "up" : "down";
+        else if (index == 3) return (y == totalColumns) ? "left" : "right";
 
         return "";
     }
 
-    // Método para instanciar un objeto (muro o puerta)
-    void InstantiateObject(string cellKey, string direction, string type)
+    // Method to instantiate an object (wall or door)
+    GameObject InstantiateObject(string cellPositionKey, string direction, string type)
     {
-        Vector3 position = CalculatePosition(cellKey, direction);
-        Quaternion rotation = Quaternion.identity; // Ajustar rotación según sea necesario
-
-        GameObject prefab = type == "Wall" ? wallPrefab : doorPrefab;
-        if (prefab == null)
+        Vector3 objectPosition = CalculatePosition(cellPositionKey, direction);
+        
+        // Determine the object's rotation based on the direction
+        Quaternion rotation;
+        if (direction == "right" || direction == "left")
         {
-            Debug.LogError("Prefab no asignado.");
-            return;
+            rotation = Quaternion.Euler(0, 90, 0); // Rotation for horizontal walls
+        }
+        else
+        {
+            rotation = Quaternion.identity; // No additional rotation for vertical walls
         }
 
-        GameObject instance = Instantiate(prefab, position, rotation);
+        // Select the appropriate prefab
+        GameObject prefab = type == "Wall" ? wallPrefab : doorPrefab;
+        if (prefab == null) return null;
+
+        // Instantiate the object with the calculated position and rotation
+        GameObject instance = Instantiate(prefab, objectPosition, rotation);
         instance.transform.parent = this.transform;
-        Debug.Log($"{type} instanciado en dirección {direction} para la celda {cellKey}.");
+        return instance;
     }
 
-    // Método para calcular la posición del objeto basado en la celda y la dirección
+    // Method to calculate the object's position based on the cell and direction
     private Vector3 CalculatePosition(string cellPositionKey, string direction)
     {
-        // Convertir la posición de celda de string a Vector2Int
+        // Convert cell position from string to Vector2Int
         string[] positionParts = cellPositionKey.Trim('(', ')').Split(',');
         int cellX = int.Parse(positionParts[0].Trim());
         int cellZ = int.Parse(positionParts[1].Trim());
 
-        // Calcular la posición base de la celda en el espacio 3D
-        float x = (cellX - 1) * gridSpacing; // -1 porque las celdas empiezan desde 1
-        float z = (cellZ - 1) * gridSpacing; // -1 porque las celdas empiezan desde 1
-        float y = 0.5f; // Elevar el objeto 0.5 unidades por encima del suelo
+        // Calculate the base position of the cell in 3D space
+        float x = (cellX - 1) * gridSpacing; // -1 because cells start from 1
+        float z = (cellZ - 1) * gridSpacing; // -1 because cells start from 1
+        float y = 0.5f; // Raise the object 0.5 units above the ground
 
-        // Ajustar las coordenadas según la dirección
-        if (direction == "derecha") x += gridSpacing / 2;
-        if (direction == "izquierda") x -= gridSpacing / 2;
-        if (direction == "arriba") z += gridSpacing / 2;
-        if (direction == "abajo") z -= gridSpacing / 2;
+        // Adjust coordinates according to the direction
+        switch (direction)
+        {
+            case "right":
+                x += gridSpacing / 2; // Adjustment to the right
+                break;
+            case "left":
+                x -= gridSpacing / 2; // Adjustment to the left
+                break;
+            case "up":
+                z += gridSpacing / 2; // Adjustment upwards
+                break;
+            case "down":
+                z -= gridSpacing / 2; // Adjustment downwards
+                break;
+        }
 
+        // Return the calculated position
         return new Vector3(x, y, z);
     }
-
 }
