@@ -227,6 +227,8 @@ MonoBehaviour:
   doorPrefab: {fileID: 3642218918979621011, guid: 01b1273c760ac4444a1ee8afc7be2ab0, type: 3}
   gridSpacing: 1
   gridOrigin: {x: 0, y: 0, z: 0}
+  innerGridX: 8
+  innerGridZ: 6
 --- !u!1 &422845710
 GameObject:
   m_ObjectHideFlags: 0
