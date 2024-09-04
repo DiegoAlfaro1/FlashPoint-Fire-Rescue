@@ -70,6 +70,17 @@ public class GameController : MonoBehaviour
             gameElementsGenerator.GenerateSmoke(currentGameState.smoke_locations);
         }
 
+        FirefighterGenerator firefighterGenerator = GetComponent<FirefighterGenerator>();
+
+        if (firefighterGenerator == null)
+        {
+            Debug.LogError("FirefighterGenerator component not found on the GameObject.");
+            return;
+        } else
+        {
+            firefighterGenerator.GenerateFirefighters(currentGameState.firefighter_positions);
+        }
+
     }
 
 
