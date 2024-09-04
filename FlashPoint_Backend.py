@@ -807,6 +807,7 @@ class FlashPointModel(Model):
             self.schedule.step()  # Avanza el planificador de agentes
             self.check_game_over()  # Verifica las condiciones de fin del juego
             self.current_step += 1  # Incrementa el contador de pasos del juego
+            print(self.grid_structure)
         return self.get_game_state()  # Retorna el estado del juego
 
     def advance_fire(self) -> None:

@@ -35,9 +35,13 @@ def start_game():
         height = 6
         wall_matrix = config['wall_matrix']
         victims = config['victims']
+        print(f"victims: {victims}")
         fire = config['fire']
+        print(f"fire: {fire}")
         doors = config['doors']
+        print(f"doors: {doors}")
         exits = config['exits']
+        print(f"exits: {exits}")
         n_agents = 6
         
         current_game = FlashPointModel(width, height, wall_matrix, victims, fire, doors, exits, n_agents)

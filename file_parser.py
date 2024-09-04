@@ -1,34 +1,46 @@
 def parse_game_config(file_path):
     with open(file_path, 'r') as file:
         lines = file.readlines()
-
-    wall_matrix = [line.strip().split() for line in lines[:6]]
     
+    wall_matrix = []
     victims = []
-    fire = []
-    doors = []
-    exits = []
-    
-    current_section = 'victims'
-    for line in lines[6:]:
-        parts = line.strip().split()
-        if len(parts) == 3 and current_section == 'victims':
-            x, y, v_type = parts
-            victims.append(((int(x), int(y)), v_type == 'v'))
-        elif len(parts) == 2 and current_section == 'fire':
-            x, y = map(int, parts)
-            fire.append((x, y))
-        elif len(parts) == 4 and current_section == 'doors':
+    fuego= []
+    puertas=[]
+    entrada=[]
+
+        
+    for line in lines[:6]:
+        row = line.strip().split()
+        wall_matrix.append(row)
+
+    for line in lines[6:9]:
+        parts = line.split()
+        if len(parts) == 3:
+            x, y = int(parts[0]), int(parts[1])
+            entity_type = parts[2]
+            if entity_type == 'v':
+                victims.append(((x, y), True))
+            else:
+                victims.append(((x, y), False))
+
+    for line in lines[9:19]:
+        # Split the line into x and y
+        parts = line.split()
+        if len(parts) == 2:
+            x, y = int(parts[0]), int(parts[1])
+            fuego.append((x, y))
+
+    for line in lines[19:27]:
+        parts = line.split()
+        if len(parts) == 4:
             x1, y1, x2, y2 = map(int, parts)
-            doors.append(((x1, y1), (x2, y2)))
-        elif len(parts) == 2 and current_section == 'exits':
-            x, y = map(int, parts)
-            exits.append((x, y))
-        elif len(parts) == 2:
-            current_section = 'fire' if current_section == 'victims' else 'doors' if current_section == 'fire' else 'exits'
-            x, y = map(int, parts)
-            if current_section == 'fire':
-                fire.append((x, y))
+            puertas.append(((x1, y1), (x2, y2)))
+
+    for line in lines[27:31]:
+        parts = line.split()
+        if len(parts) == 2:
+            x, y = int(parts[0]), int(parts[1])
+            entrada.append((x, y))
     
     #C:/Users/die_g/OneDrive/desktop/Multiagentes/FlashPoint-Fire-Rescue/input.txt
 
@@ -46,7 +58,9 @@ def parse_game_config(file_path):
     return {
         'wall_matrix': wall_matrix,
         'victims': victims,
-        'fire': fire,
-        'doors': doors,
-        'exits': exits
+        'fire': fuego,
+        'doors': puertas,
+        'exits': entrada
     }
+
+
