@@ -18,6 +18,9 @@ public class WallAndDoorGenerator : MonoBehaviour
     {
         totalGridX = innerGridX + 2;
         totalGridZ = innerGridZ + 2;
+        
+        // Set walls around the grid
+        PlaceBorderWalls();
     }
 
     public void ProcessGridStructure(Dictionary<string, List<List<object>>> gridStructure)
@@ -104,6 +107,27 @@ public class WallAndDoorGenerator : MonoBehaviour
             }
 
             counterZ++;
+        }
+    }
+
+    private void PlaceBorderWalls()
+    {
+        // Colocar muros en los bordes superior e inferior
+        for (int x = 1; x < innerGridX + 1; x++)
+        {
+            // Borde superior
+            InstantiateObject(new Vector3(x * gridSpacing, 0.5f, 0.5f), Quaternion.identity, wallPrefab);
+            // Borde inferior
+            InstantiateObject(new Vector3(x * gridSpacing, 0.5f, innerGridZ * gridSpacing + 0.5f), Quaternion.identity, wallPrefab);
+        }
+
+        // Colocar muros en los bordes izquierdo y derecho
+        for (int z = 1; z < innerGridZ + 1; z++)
+        {
+            // Borde izquierdo
+            InstantiateObject(new Vector3(0.5f, 0.5f, z * gridSpacing), Quaternion.Euler(0, 90, 0), wallPrefab);
+            // Borde derecho
+            InstantiateObject(new Vector3(innerGridX * gridSpacing + 0.5f, 0.5f, z * gridSpacing), Quaternion.Euler(0, 90, 0), wallPrefab);
         }
     }
 
