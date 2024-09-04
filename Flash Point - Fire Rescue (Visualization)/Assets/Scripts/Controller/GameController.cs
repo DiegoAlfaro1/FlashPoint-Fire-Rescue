@@ -47,6 +47,29 @@ public class GameController : MonoBehaviour
 
         // Llamar al método para procesar la estructura de la cuadrícula
         wallAndDoorGenerator.ProcessGridStructure(currentGameState.grid_structure);
+
+        GameElementsGenerator gameElementsGenerator = GetComponent<GameElementsGenerator>();
+
+        // Generar POIs, fuego, y humo usando los datos del estado del juego
+        if (currentGameState.poi_locations != null)
+        {
+            gameElementsGenerator.GeneratePOIs(currentGameState.poi_locations);
+        }
+        else
+        {
+            Debug.LogWarning("POI locations are null.");
+        }
+
+        if (currentGameState.fire_locations != null)
+        {
+            gameElementsGenerator.GenerateFire(currentGameState.fire_locations);
+        }
+
+        if (currentGameState.smoke_locations != null)
+        {
+            gameElementsGenerator.GenerateSmoke(currentGameState.smoke_locations);
+        }
+
     }
 
 

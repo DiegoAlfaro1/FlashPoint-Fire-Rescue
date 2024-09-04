@@ -166,6 +166,7 @@ GameObject:
   - component: {fileID: 357939390}
   - component: {fileID: 357939393}
   - component: {fileID: 357939392}
+  - component: {fileID: 357939394}
   m_Layer: 0
   m_Name: Game Manager
   m_TagString: Untagged
@@ -250,6 +251,25 @@ MonoBehaviour:
   innerGridZ: 6
   gridSpacing: 1
   gridOrigin: {x: 0, y: 0, z: 0}
+--- !u!114 &357939394
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 357939388}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d994b7bc0322f72449465c2b543192f5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  poiPrefab: {fileID: 455198820871909155, guid: 141c6fa5664ff754598c178b9fce94bb, type: 3}
+  firePrefab: {fileID: 8589458176561393799, guid: b91a5bb24e690d044b32f6f5c17ac617, type: 3}
+  smokePrefab: {fileID: 2228067144676766488, guid: 398f57fd73e90c44d8ccae4ddb62ba57, type: 3}
+  gridSpacing: 1
+  gridOrigin: {x: 0, y: 0, z: 0}
+  innerGridX: 8
+  innerGridZ: 6
 --- !u!1 &422845710
 GameObject:
   m_ObjectHideFlags: 0
