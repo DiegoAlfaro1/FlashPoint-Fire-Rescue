@@ -18,9 +18,6 @@ public class WallAndDoorGenerator : MonoBehaviour
     {
         totalGridX = innerGridX + 2;
         totalGridZ = innerGridZ + 2;
-        
-        // Set walls around the grid
-        PlaceBorderWalls();
     }
 
     public void ProcessGridStructure(Dictionary<string, List<List<object>>> gridStructure)
@@ -108,6 +105,9 @@ public class WallAndDoorGenerator : MonoBehaviour
 
             counterZ++;
         }
+        
+        // Set walls around the grid
+        PlaceBorderWalls();
     }
 
     private void PlaceBorderWalls()
