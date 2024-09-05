@@ -22,6 +22,7 @@ class FirefighterAgent(Agent):
         self.saved_ap = 0  # Puntos de acción guardados
         self.max_ap = 8  # Puntos de acción máximos permitidos
         self.carrying_victim = False  # Estado de si el agente está cargando una víctima
+        self.focus = "rescue" if self.unique_id < self.model.n_agents // 2 else "extinguish"
 
     def get_position(self) -> Tuple[int, int]:
         """
@@ -82,7 +83,9 @@ class FirefighterAgent(Agent):
             
             # Revela un punto de interés (POI) si se encuentra en uno
             if new_pos in self.model.pois and not self.model.pois[new_pos]["revealed"]:
-                self.reveal_poi(new_pos)
+                is_victim = self.model.reveal_poi(new_pos)
+                if is_victim and not self.carrying_victim and self.focus == "rescue":
+                    self.carrying_victim = True
             
             # Rescata a la víctima si está en una salida
             if self.carrying_victim and new_pos in self.model.exits:
@@ -90,7 +93,7 @@ class FirefighterAgent(Agent):
 
             return True
         return False
-
+    
     def reveal_poi(self, pos: Tuple[int, int]) -> None:
         """
         Revela un punto de interés (POI) en una posición dada.
@@ -170,27 +173,30 @@ class FirefighterAgent(Agent):
         3. Revelar puntos de interés (POIs) adyacentes.
         4. Realizar un movimiento aleatorio.
         """
-        self.ap += self.saved_ap  # Añade los puntos de acción guardados al total
-        self.saved_ap = 0  # Reinicia los puntos de acción guardados
+    def step(self) -> None:
+        self.ap += self.saved_ap
+        self.saved_ap = 0
 
-        # Acciones de estrategia en orden de prioridad
-        if self.extinguish_action():
-            return  # Si extinguió fuego o humo con éxito, termina el paso
-
-        if self.carrying_victim and self.move_action():
-            return  # Si se movió con éxito hacia una salida, termina el paso
-
-
-        if self.reveal_poi_action():
-            return  # Si reveló un POI con éxito, termina el paso
+        if self.focus == "rescue":
+            if self.carrying_victim and self.move_action():
+                return
+            if self.reveal_poi_action():
+                return
+            if self.move_action():  
+                return
+            if self.extinguish_action():  
+                return
+        else:  
+            if self.extinguish_action():
+                return
+            if self.move_action():
+                return
 
         if self.random_move():
-            return  # Si se movió aleatoriamente con éxito, termina el paso
+            return
 
-        # Guarda los puntos de acción restantes para el próximo paso
-        self.saved_ap = min(self.ap, 4)  # Limita los puntos de acción guardados a 4
-        self.ap = 0  # Establece los puntos de acción actuales a 0
-
+        self.saved_ap = min(self.ap, 4)
+        self.ap = 0
     def move_action(self) -> bool:
         """
         Acción de movimiento hacia una salida si el bombero lleva una víctima.
@@ -224,9 +230,11 @@ class FirefighterAgent(Agent):
         adjacent_cells = self.model.grid.get_neighborhood(self.position, moore=False, include_center=True)
         for cell in adjacent_cells:
             if cell in self.model.pois and not self.model.pois[cell]["revealed"]:
-                # Verifica si la celda está vacía antes de moverse
                 if self.model.grid.is_cell_empty(cell):
                     if self.move(cell):
+                        is_victim = self.model.reveal_poi(cell)
+                        if is_victim and not self.carrying_victim and self.focus == "rescue":
+                            self.carrying_victim = True
                         return True
         return False
 
@@ -273,9 +281,9 @@ class FirefighterAgent(Agent):
         adjacent_cells = self.model.grid.get_neighborhood(self.position, moore=False, include_center=True)
         for cell in adjacent_cells:
             if cell in self.model.fire or cell in self.model.smoke:
-                return self.extinguish(cell)  # Intenta extinguir el fuego o humo en la celda adyacente
-        
-        return False  # No se pudo extinguir fuego o humo en ninguna celda adyacente
+                if self.focus == "extinguish" or (self.focus == "rescue" and self.carrying_victim):
+                    return self.extinguish(cell)
+        return False # No se pudo extinguir fuego o humo en ninguna celda adyacente
 
 class FlashPointModel(Model):
 
@@ -460,14 +468,12 @@ class FlashPointModel(Model):
         """
         print("Checking firefighters and victims")
         agents_to_remove = []  # Lista para almacenar agentes a ser removidos.
-        flag = True
 
         # Recolecta agentes que deben ser removidos del grid.
         for agent in self.agents:
             if isinstance(agent, FirefighterAgent) and agent.position in self.fire:
                 self.ff_ids.append(agent.unique_id)
                 print(f"Firefighter in fire in {agent.position}")
-                print(self.ff_ids)
                 agents_to_remove.append(agent)
 
         # Remueve agentes recolectados del grid y del planificador.
@@ -476,39 +482,45 @@ class FlashPointModel(Model):
             self.schedule.remove(agent)
             self.agents.remove(agent)
 
-        # Verifica si hay menos de 6 bomberos en el grid.
-        num_firefighters = len([agent for agent in self.agents if isinstance(agent, FirefighterAgent)])
-
-        # Añade nuevos agentes si las condiciones son adecuadas.
-        attempt_counter = 0
-        while flag and num_firefighters < 6:
-            x, y = random.randint(1, 6), random.randint(1, 8)  # Genera una posición aleatoria.
-            attempt_counter += 1
-
-            # Verifica si la posición es válida para agregar un nuevo bombero.
-            if self.grid.is_cell_empty((x, y)) and (x, y) not in self.fire:
-                # Agrega un nuevo bombero si es un paso par y hay bomberos disponibles para agregar.
-                if actual_step % 2 == 0 and self.ff_ids:
-                    new_id = self.ff_ids.pop()
-                    new_agent = FirefighterAgent(new_id, self)
-                    self.schedule.add(new_agent)
-                    self.grid.place_agent(new_agent, (x, y))
-                    self.agents.append(new_agent)
-                    num_firefighters += 1
-                    print(f"New firefighter added at {x}, {y}")
-                    print(self.ff_ids)
-                flag = False
-
-            # Si no se puede agregar un nuevo bombero después de 20 intentos, se rompe el ciclo.
-            if attempt_counter >= 20:
-                print("Unable to place a new firefighter after 20 attempts.")
-                break
+        # Si es un paso par, intentamos agregar todos los bomberos eliminados
+        if actual_step % 2 == 0:
+            print(f"Even step {actual_step}, attempting to add all knocked-down firefighters")
+            for ff_id in list(self.ff_ids):  # Use a copy of the list to iterate
+                attempt_counter = 0
+                while attempt_counter < 20:  # Limit attempts to 20 per firefighter
+                    x, y = random.randint(1, 6), random.randint(1, 8)  # Genera una posición aleatoria.
+                    if self.grid.is_cell_empty((x, y)):
+                        new_agent = FirefighterAgent(ff_id, self)
+                        self.schedule.add(new_agent)
+                        self.grid.place_agent(new_agent, (x, y))
+                        self.agents.append(new_agent)
+                        
+                        # If placed in fire, extinguish it
+                        if (x, y) in self.fire:
+                            self.fire.remove((x, y))
+                            print(f"Fire extinguished at {x}, {y} due to firefighter placement")
+                        
+                        # If placed on a POI, reveal it
+                        if (x, y) in self.pois and not self.pois[(x, y)]["revealed"]:
+                            self.reveal_poi((x, y))
+                            print(f"POI revealed at {x}, {y} due to firefighter placement")
+                        
+                        self.ff_ids.remove(ff_id)
+                        print(f"Firefighter {ff_id} added at {x}, {y}")
+                        break
+                    attempt_counter += 1
+                
+                if attempt_counter >= 20:
+                    print(f"Unable to place firefighter {ff_id} after 20 attempts.")
 
         # Verifica si alguna posición en los puntos de interés (pois) tiene fuego.
         for pos in list(self.pois.keys()):
             if pos in self.fire:
                 self.lose_victim(pos)
 
+        print(f"Remaining knocked-down firefighters: {self.ff_ids}")
+        print(f"Current number of active firefighters: {len([agent for agent in self.agents if isinstance(agent, FirefighterAgent)])}")
+        
     def is_valid_position(self, pos: Tuple[int, int]) -> bool:
         """
         Verifica si una posición es válida dentro del grid.
@@ -1032,6 +1044,7 @@ class FlashPointModel(Model):
         print(f"Ubicacion del fuego: {self.fire}")
         print(f"Ubicacion del humo: {self.smoke}")
         print(f"Ubicacion de los pois: {self.pois}")
+        print(f"Victimas rescatadas: {self.rescued_victims}")
         for agent in range(len(self.agents)):
             print(f"Ubicacion de los agentes: {self.agents[agent].position}, esta cargando vicima: {self.agents[agent].carrying_victim}")
 
