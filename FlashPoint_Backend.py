@@ -174,11 +174,12 @@ class FirefighterAgent(Agent):
         self.saved_ap = 0  # Reinicia los puntos de acción guardados
 
         # Acciones de estrategia en orden de prioridad
+        if self.extinguish_action():
+            return  # Si extinguió fuego o humo con éxito, termina el paso
+
         if self.carrying_victim and self.move_action():
             return  # Si se movió con éxito hacia una salida, termina el paso
 
-        if self.extinguish_action():
-            return  # Si extinguió fuego o humo con éxito, termina el paso
 
         if self.reveal_poi_action():
             return  # Si reveló un POI con éxito, termina el paso
@@ -485,7 +486,7 @@ class FlashPointModel(Model):
             attempt_counter += 1
 
             # Verifica si la posición es válida para agregar un nuevo bombero.
-            if self.grid.is_cell_empty((x, y)) and (x, y) not in self.fire and (x, y) not in self.pois:
+            if self.grid.is_cell_empty((x, y)) and (x, y) not in self.fire:
                 # Agrega un nuevo bombero si es un paso par y hay bomberos disponibles para agregar.
                 if actual_step % 2 == 0 and self.ff_ids:
                     new_id = self.ff_ids.pop()
@@ -812,7 +813,7 @@ class FlashPointModel(Model):
             self.reroll_pois()  # Re-rola los puntos de interés
             self.check_game_over()  # Verifica las condiciones de fin del juego
             self.current_step += 1  # Incrementa el contador de pasos del juego
-            print(self.grid_structure)
+            # print(self.grid_structure)
         return self.get_game_state()  # Retorna el estado del juego
 
     def advance_fire(self) -> None:
@@ -1023,9 +1024,9 @@ class FlashPointModel(Model):
     '''Funcion para genera el json'''
     
     def return_json(self):
-        print(f"Grid actual {self.grid_structure}")
+        # print(f"Grid actual {self.grid_structure}")
         print("\n")
-        print(f"Grid out of bounds {self.ouf_of_bounds_grid_structure}")
+        # print(f"Grid out of bounds {self.ouf_of_bounds_grid_structure}")
         print("\n")
         print(f"Paredes no derrumbadas y su salud: {self.wall_health}")
         print(f"Ubicacion del fuego: {self.fire}")
