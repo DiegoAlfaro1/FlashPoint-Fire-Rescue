@@ -531,7 +531,10 @@ class FlashPointModel(Model):
         Retorna:
         - True si las posiciones son adyacentes, False en caso contrario.
         """
-        return abs(pos1[0] - pos2[0]) + abs(pos1[1] - pos2[1]) == 1
+        aux = abs(pos1[0] - pos2[0]) + abs(pos1[1] - pos2[1]) == 1
+        return aux and not self.wall_in_direction(pos1, pos2) and not self.door_in_direction(pos1, pos2)
+
+
 
     def lose_victim(self, pos: Tuple[int, int]) -> None:
         """
@@ -803,10 +806,10 @@ class FlashPointModel(Model):
         - El estado actual del juego después de realizar el paso.
         """
         if self.running:
+            self.schedule.step()  # Avanza el planificador de agentes
             self.advance_fire()  # Avanza el estado del fuego
             self.check_firefighters_and_victims(self.current_step)  # Verifica el estado de bomberos y víctimas
             self.reroll_pois()  # Re-rola los puntos de interés
-            self.schedule.step()  # Avanza el planificador de agentes
             self.check_game_over()  # Verifica las condiciones de fin del juego
             self.current_step += 1  # Incrementa el contador de pasos del juego
             print(self.grid_structure)
