@@ -21,22 +21,41 @@ public class FirefighterGenerator : MonoBehaviour
 
     public void GenerateFirefighters(List<Firefighter> firefighterPositions)
     {
+        int counterX = 1;
+        int counterZ = 1;
+
         Debug.Log("Starting firefighter generation...");
 
-        foreach (var firefighter in firefighterPositions)
+        // Iterate through the grid rows
+        for (int z = totalGridZ - 2; z > 0; z--)
         {
-            int originalX = firefighter.position[0];
-            int originalZ = firefighter.position[1];
+            counterX = 1;
 
-            // Adjust the position to Unity coordinates, reflecting Python's axis order
-            Vector3 firefighterPosition = new Vector3(
-                originalZ * gridSpacing,
-                0,
-                originalX * gridSpacing
-            ) + gridOrigin;
+            // Iterate through the grid columns
+            for (int x = 1; x < totalGridX - 1; x++)
+            {
+                // Compare with the firefighter positions to place them in the correct location
+                foreach (var firefighter in firefighterPositions)
+                {
+                    if (firefighter.position[0] == counterZ && firefighter.position[1] == counterX)
+                    {
+                        // Calculate the position to place the firefighter at the center of the cell
+                        Vector3 firefighterPosition = new Vector3(
+                            x * gridSpacing,
+                            0,
+                            z * gridSpacing
+                        ) + gridOrigin;
 
-            InstantiateObject(firefighterPosition, Quaternion.identity, firefighterPrefab);
-            Debug.Log($"Firefighter generated at Unity position: {firefighterPosition}");
+                        // Instantiate the firefighter object at the calculated position
+                        InstantiateObject(firefighterPosition, Quaternion.identity, firefighterPrefab);
+                        Debug.Log($"Firefighter generated at Unity position: {firefighterPosition}");
+                    }
+                }
+
+                counterX++;
+            }
+
+            counterZ++;
         }
 
         Debug.Log("Firefighter generation complete.");
