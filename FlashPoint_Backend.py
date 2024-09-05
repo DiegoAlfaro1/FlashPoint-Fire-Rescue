@@ -364,7 +364,7 @@ class FlashPointModel(Model):
             firefighter = FirefighterAgent(i, self)  # Crear un nuevo agente bombero
             self.schedule.add(firefighter)  # Añadir el bombero al scheduler
             while True:
-                x, y = self.random.randrange(1, self.grid.width), self.random.randrange(self.grid.height)  # Generar una posición aleatoria
+                x, y = self.random.randrange(1, self.grid.width), self.random.randrange(1,self.grid.height)  # Generar una posición aleatoria
                 if self.grid.is_cell_empty((x, y)) and (x, y) not in self.fire and (x, y) not in self.pois:
                     break  # Salir del ciclo si la celda es válida
 
