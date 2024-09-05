@@ -359,6 +359,9 @@ class FlashPointModel(Model):
         for i in range(len(fire)):
             self.fire.add(fire[i])  # Añadir posiciones de fuego al conjunto de fuego
 
+        for i in range(len(victims)):
+            self.add_initial_victimas(victims)  # Añadir víctimas iniciales a los puntos de interés
+
         # Añadir agentes bomberos
         for i in range(self.n_agents):
             firefighter = FirefighterAgent(i, self)  # Crear un nuevo agente bombero
@@ -373,8 +376,7 @@ class FlashPointModel(Model):
             self.agents.append(firefighter)  # Añadir el bombero a la lista de agentes
 
         # Añadir víctimas iniciales
-        for i in range(len(victims)):
-            self.add_initial_victimas(victims)  # Añadir víctimas iniciales a los puntos de interés
+
 
     def process_cell(self, x: int, y: int, cell: str) -> None:
         """
