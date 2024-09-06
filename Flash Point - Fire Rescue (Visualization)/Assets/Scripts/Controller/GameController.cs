@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using TMPro;
 
 public class GameController : MonoBehaviour
 {
@@ -11,6 +12,11 @@ public class GameController : MonoBehaviour
     public WallAndDoorGenerator wallAndDoorGenerator;
     public GameElementsGenerator gameElementsGenerator;
     public FirefighterGenerator firefighterGenerator;
+
+    // References to UI text elements
+    public TMP_Text damageMarkersText;
+    public TMP_Text savedVictimsText;
+    public TMP_Text deadVictimsText;
 
 
     void Start()
@@ -68,6 +74,9 @@ public class GameController : MonoBehaviour
             StartCoroutine(AdvanceSimulationStep());
         }
 
+        // Update the UI
+        UpdateUI();
+
     }
 
     // Method to clear a container of all its children
@@ -115,4 +124,16 @@ public class GameController : MonoBehaviour
         // Retrieve the new game state after advancing a step
         StartCoroutine(httpService.GetGameState(OnGameStateReceived));
     }
+
+    // Method to update the UI
+    private void UpdateUI()
+    {
+        if (currentGameState != null)
+        {
+            damageMarkersText.text = "Damage Markers: " + currentGameState.damage_markers;
+            savedVictimsText.text = "Saved Victims: " + currentGameState.rescued_victims;
+            deadVictimsText.text = "Dead Victims: " + currentGameState.lost_victims;
+        }
+    }
+
 }
