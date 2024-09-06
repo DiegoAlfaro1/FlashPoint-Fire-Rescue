@@ -18,15 +18,17 @@ public class GameController : MonoBehaviour
     public TMP_Text savedVictimsText;
     public TMP_Text deadVictimsText;
 
-
     void Start()
     {
+        // Initialize HTTPService and start the game without parameters
         httpService = GetComponent<HTTPService>();
-
-        // Start the game without parameters
         StartCoroutine(httpService.StartGame(OnGameStarted));
     }
 
+    /// <summary>
+    /// Callback for handling the response when the game is started.
+    /// </summary>
+    /// <param name="response">Server response after game starts.</param>
     private void OnGameStarted(string response)
     {
         Debug.Log("Game Started: " + response);
@@ -35,19 +37,25 @@ public class GameController : MonoBehaviour
         StartCoroutine(httpService.GetGameState(OnGameStateReceived));
     }
 
+    /// <summary>
+    /// Callback for processing the received game state from the server.
+    /// </summary>
+    /// <param name="gameState">Current state of the game.</param>
     private void OnGameStateReceived(GameState gameState)
     {
         currentGameState = gameState;
         Debug.Log("Updated State Of The Game.");
 
-        // Clean the scene before generating the new game state
+        // Clear previously generated elements before generating new ones
         ClearGeneratedElements();
 
+        // Process wall and door grid structure
         if (wallAndDoorGenerator != null && currentGameState.grid_structure != null)
         {
             wallAndDoorGenerator.ProcessGridStructure(currentGameState.grid_structure);
         }
 
+        // Generate game elements such as POIs, fire, smoke, and firefighters
         if (currentGameState.poi_locations != null)
         {
             gameElementsGenerator.GeneratePOIs(currentGameState.poi_locations);
@@ -68,27 +76,31 @@ public class GameController : MonoBehaviour
             firefighterGenerator.GenerateFirefighters(currentGameState.firefighter_positions);
         }
 
-        // Advances the corutine to the next step if the game is running
+        // Continue advancing the simulation if the game is running
         if (currentGameState.running)
         {
             StartCoroutine(AdvanceSimulationStep());
         }
 
-        // Update the UI
+        // Update the game UI elements
         UpdateUI();
-
     }
 
-    // Method to clear a container of all its children
+    /// <summary>
+    /// Clears all generated elements from the scene.
+    /// </summary>
     private void ClearGeneratedElements()
     {
-        // Limpiar los hijos de los generadores, sin eliminar los propios generadores
+        // Clear children objects from each generator while keeping the generators themselves intact
         ClearChildren(wallAndDoorGenerator.transform);
         ClearChildren(gameElementsGenerator.transform);
         ClearChildren(firefighterGenerator.transform);
     }
 
-    // Auxiliar method to clear all the children of a container
+    /// <summary>
+    /// Helper method to clear all child objects of a specified parent.
+    /// </summary>
+    /// <param name="parent">The parent Transform to clear.</param>
     private void ClearChildren(Transform parent)
     {
         if (parent != null)
@@ -100,7 +112,9 @@ public class GameController : MonoBehaviour
         }
     }
 
-    // Coroutine to automatically advance the simulation steps
+    /// <summary>
+    /// Coroutine to automatically advance the simulation steps at set intervals.
+    /// </summary>
     private IEnumerator AdvanceSimulationStep()
     {
         while (currentGameState.running)
@@ -116,7 +130,10 @@ public class GameController : MonoBehaviour
         Debug.Log("Simulation ended.");
     }
 
-    // Callback for handling the response after a step is advanced
+    /// <summary>
+    /// Callback for handling the response after advancing a simulation step.
+    /// </summary>
+    /// <param name="response">Server response after advancing a step.</param>
     private void OnStepAdvanced(string response)
     {
         Debug.Log("Step advanced: " + response);
@@ -125,7 +142,9 @@ public class GameController : MonoBehaviour
         StartCoroutine(httpService.GetGameState(OnGameStateReceived));
     }
 
-    // Method to update the UI
+    /// <summary>
+    /// Updates the UI elements to reflect the current game state.
+    /// </summary>
     private void UpdateUI()
     {
         if (currentGameState != null)
@@ -135,5 +154,4 @@ public class GameController : MonoBehaviour
             deadVictimsText.text = "Dead Victims: " + currentGameState.lost_victims;
         }
     }
-
 }

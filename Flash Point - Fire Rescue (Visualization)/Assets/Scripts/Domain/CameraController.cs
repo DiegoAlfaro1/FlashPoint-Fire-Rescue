@@ -2,14 +2,17 @@ using UnityEngine;
 
 public class CameraController : MonoBehaviour
 {
-    public float moveSpeed = 5f; // Camera movement speed
-    public Vector3 gridOrigin = Vector3.zero; // Origin of the grid
-    public float gridSpacing = 1f; // Spacing between grid cells
-    public int innerGridX; // Inner grid size along the X-axis
-    public int innerGridZ; // Inner grid size along the Z-axis
+    public float moveSpeed = 5f; 
+    public Vector3 gridOrigin = Vector3.zero; 
+    public float gridSpacing = 1f; 
+    public int innerGridX; 
+    public int innerGridZ; 
 
     private float minX, maxX, minZ, maxZ;
 
+    /// <summary>
+    /// Initializes camera movement bounds based on the grid size.
+    /// </summary>
     void Start()
     {
         // Calculate camera movement bounds based on the grid size
@@ -19,6 +22,9 @@ public class CameraController : MonoBehaviour
         maxZ = gridOrigin.z + (innerGridZ) * gridSpacing;
     }
 
+    /// <summary>
+    /// Handles camera movement and restricts it within the defined boundaries.
+    /// </summary>
     void Update()
     {
         // Get keyboard input for camera movement
