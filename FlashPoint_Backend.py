@@ -80,6 +80,7 @@ class FirefighterAgent(Agent):
             self.ap -= ap_cost  # Reduce los puntos de acción
             self.model.grid.move_agent(self, new_pos)  # Mueve al bombero en el grid
             self.position = new_pos  # Actualiza la posición del bombero
+            print(f"Bombero {self.unique_id} se movió a {new_pos} con {self.ap} AP")
             
             # Revela un punto de interés (POI) si se encuentra en uno
             if new_pos in self.model.pois and not self.model.pois[new_pos]["revealed"]:
@@ -140,10 +141,12 @@ class FirefighterAgent(Agent):
         if target_pos in self.model.fire and self.ap >= 2:
             self.ap -= 2  # Extinguir fuego cuesta 2 puntos de acción
             self.model.fire.remove(target_pos)  # Remueve el fuego de la posición
+            print(f"Bombero {self.unique_id} extinguió fuego en {target_pos} con {self.ap} AP")
             return True
         elif target_pos in self.model.smoke and self.ap >= 1:
             self.ap -= 1  # Extinguir humo cuesta 1 punto de acción
             self.model.smoke.remove(target_pos)  # Remueve el humo de la posición
+            print(f"Bombero {self.unique_id} extinguió humo en {target_pos} con {self.ap} AP")
             return True
         return False
 
@@ -162,17 +165,7 @@ class FirefighterAgent(Agent):
                     self.model.damage_markers += 1  # Aumenta el contador de marcadores de daño
                     return True
         return False
-
-    def step(self) -> None:
-        """
-        Define el comportamiento del bombero en cada paso de la simulación.
-        Este método se llama en cada paso del modelo y realiza las acciones 
-        del bombero en el siguiente orden de prioridad:
-        1. Moverse hacia una salida si está cargando una víctima.
-        2. Apagar fuego o humo.
-        3. Revelar puntos de interés (POIs) adyacentes.
-        4. Realizar un movimiento aleatorio.
-        """
+    
     def step(self) -> None:
         self.ap += self.saved_ap
         self.saved_ap = 0
@@ -197,6 +190,7 @@ class FirefighterAgent(Agent):
 
         self.saved_ap = min(self.ap, 4)
         self.ap = 0
+    
     def move_action(self) -> bool:
         """
         Acción de movimiento hacia una salida si el bombero lleva una víctima.
@@ -268,7 +262,7 @@ class FirefighterAgent(Agent):
         Retorna:
         - Verdadero si la posición está dentro de los límites del grid, falso en caso contrario.
         """
-        return 0 <= pos[0] < self.model.grid.width and 0 <= pos[1] < self.model.grid.height
+        return 1 <= pos[0] < self.model.grid.width and 1 <= pos[1] < self.model.grid.height
 
     def extinguish_action(self) -> bool:
         """
