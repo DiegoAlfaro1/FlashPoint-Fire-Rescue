@@ -96,7 +96,7 @@ public class GameController : MonoBehaviour
     {
         while (currentGameState.running)
         {
-            yield return new WaitForSeconds(5f); // Wait 5 seconds between steps
+            yield return new WaitForSeconds(10f); // Wait 10 seconds between steps
 
             Debug.Log("Advancing simulation step...");
 
