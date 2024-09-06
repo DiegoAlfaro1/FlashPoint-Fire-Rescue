@@ -15,18 +15,23 @@ public class GameElementsGenerator : MonoBehaviour
     private int totalGridX;
     private int totalGridZ;
 
+    /// <summary>
+    /// Initializes the grid size.
+    /// </summary>
     public void Start()
     {
         totalGridX = innerGridX + 2;
         totalGridZ = innerGridZ + 2;
     }
 
+    /// <summary>
+    /// Generates Points of Interest (POIs) on the grid.
+    /// </summary>
+    /// <param name="poiLocations">List of POI positions.</param>
     public void GeneratePOIs(List<POI> poiLocations)
     {
         int counterX = 1;
         int counterZ = 1;
-
-        Debug.Log("Starting POI generation...");
 
         // Iterate through the grid rows
         for (int z = totalGridZ - 2; z > 0; z--)
@@ -50,7 +55,6 @@ public class GameElementsGenerator : MonoBehaviour
 
                         // Instantiate the POI object at the calculated position
                         InstantiateObject(poiPosition, Quaternion.identity, poiPrefab);
-                        Debug.Log($"POI generated at Unity position: {poiPosition}");
                     }
                 }
 
@@ -59,21 +63,23 @@ public class GameElementsGenerator : MonoBehaviour
 
             counterZ++;
         }
-
-        Debug.Log("POI generation complete.");
     }
 
+    /// <summary>
+    /// Generates fire objects on the grid.
+    /// </summary>
+    /// <param name="fireLocations">List of fire positions.</param>
     public void GenerateFire(List<List<int>> fireLocations)
     {
         int counterX = 1;
         int counterZ = 1;
 
-        Debug.Log("Starting fire generation...");
-
+        // Iterate through the grid rows
         for (int z = totalGridZ - 2; z > 0; z--)
         {
             counterX = 1;
 
+            // Iterate through the grid columns
             for (int x = 1; x < totalGridX - 1; x++)
             {
                 foreach (var fire in fireLocations)
@@ -87,7 +93,6 @@ public class GameElementsGenerator : MonoBehaviour
                         ) + gridOrigin;
 
                         InstantiateObject(firePosition, Quaternion.identity, firePrefab);
-                        Debug.Log($"Fire generated at Unity position: {firePosition}");
                     }
                 }
 
@@ -96,21 +101,23 @@ public class GameElementsGenerator : MonoBehaviour
 
             counterZ++;
         }
-
-        Debug.Log("Fire generation complete.");
     }
 
+    /// <summary>
+    /// Generates smoke objects on the grid.
+    /// </summary>
+    /// <param name="smokeLocations">List of smoke positions.</param>
     public void GenerateSmoke(List<List<int>> smokeLocations)
     {
         int counterX = 1;
         int counterZ = 1;
 
-        Debug.Log("Starting smoke generation...");
-
+        // Iterate through the grid rows
         for (int z = totalGridZ - 2; z > 0; z--)
         {
             counterX = 1;
 
+            // Iterate through the grid columns
             for (int x = 1; x < totalGridX - 1; x++)
             {
                 foreach (var smoke in smokeLocations)
@@ -124,7 +131,6 @@ public class GameElementsGenerator : MonoBehaviour
                         ) + gridOrigin;
 
                         InstantiateObject(smokePosition, Quaternion.identity, smokePrefab);
-                        Debug.Log($"Smoke generated at Unity position: {smokePosition}");
                     }
                 }
 
@@ -133,10 +139,14 @@ public class GameElementsGenerator : MonoBehaviour
 
             counterZ++;
         }
-
-        Debug.Log("Smoke generation complete.");
     }
 
+    /// <summary>
+    /// Instantiates a new game object at the given position.
+    /// </summary>
+    /// <param name="position">Position where the object will be placed.</param>
+    /// <param name="rotation">Rotation of the object.</param>
+    /// <param name="prefab">The prefab to instantiate.</param>
     private void InstantiateObject(Vector3 position, Quaternion rotation, GameObject prefab)
     {
         if (prefab == null)

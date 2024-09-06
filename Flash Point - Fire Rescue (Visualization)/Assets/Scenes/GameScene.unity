@@ -564,7 +564,6 @@ GameObject:
   - component: {fileID: 357939389}
   - component: {fileID: 357939391}
   - component: {fileID: 357939390}
-  - component: {fileID: 357939392}
   m_Layer: 0
   m_Name: Game Manager
   m_TagString: Untagged
@@ -614,24 +613,6 @@ MonoBehaviour:
   wallAndDoorGenerator: {fileID: 1816418010}
   gameElementsGenerator: {fileID: 564964031}
   firefighterGenerator: {fileID: 459520701}
-  damageMarkersText: {fileID: 0}
-  savedVictimsText: {fileID: 0}
-  deadVictimsText: {fileID: 0}
---- !u!114 &357939392
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 357939388}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 20affd2d3a5e3794ab5041a55af028b6, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  damageMarkers: 0
-  savedVictims: 0
-  deadVictims: 0
   damageMarkersText: {fileID: 212837166}
   savedVictimsText: {fileID: 903202355}
   deadVictimsText: {fileID: 429353996}

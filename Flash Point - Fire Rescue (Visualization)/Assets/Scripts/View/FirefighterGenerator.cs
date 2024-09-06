@@ -13,18 +13,23 @@ public class FirefighterGenerator : MonoBehaviour
     private int totalGridX;
     private int totalGridZ;
 
+    /// <summary>
+    /// Initializes the grid size.
+    /// </summary>
     public void Start()
     {
         totalGridX = innerGridX + 2;
         totalGridZ = innerGridZ + 2;
     }
 
+    /// <summary>
+    /// Generates firefighters at specified positions on the grid.
+    /// </summary>
+    /// <param name="firefighterPositions">List of firefighter positions.</param>
     public void GenerateFirefighters(List<Firefighter> firefighterPositions)
     {
         int counterX = 1;
         int counterZ = 1;
-
-        Debug.Log("Starting firefighter generation...");
 
         // Iterate through the grid rows
         for (int z = totalGridZ - 2; z > 0; z--)
@@ -48,7 +53,6 @@ public class FirefighterGenerator : MonoBehaviour
 
                         // Instantiate the firefighter object at the calculated position
                         InstantiateObject(firefighterPosition, Quaternion.identity, firefighterPrefab);
-                        Debug.Log($"Firefighter generated at Unity position: {firefighterPosition}");
                     }
                 }
 
@@ -57,10 +61,14 @@ public class FirefighterGenerator : MonoBehaviour
 
             counterZ++;
         }
-
-        Debug.Log("Firefighter generation complete.");
     }
 
+    /// <summary>
+    /// Instantiates a new game object at the given position.
+    /// </summary>
+    /// <param name="position">Position where the object will be placed.</param>
+    /// <param name="rotation">Rotation of the object.</param>
+    /// <param name="prefab">The prefab to instantiate.</param>
     private void InstantiateObject(Vector3 position, Quaternion rotation, GameObject prefab)
     {
         if (prefab == null)
