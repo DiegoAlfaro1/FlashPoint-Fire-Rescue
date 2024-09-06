@@ -1,7 +1,7 @@
 import random
 from typing import List, Tuple, Dict, Set
 from mesa import Model, Agent
-from mesa.space import MultiGrid, SingleGrid
+from mesa.space import MultiGrid
 from mesa.time import RandomActivation
 import matplotlib.pyplot as plt
 
@@ -297,7 +297,7 @@ class FlashPointModel(Model):
         - n_agents: Número de agentes bomberos a inicializar (por defecto es 6).
         """
         # Inicializar la cuadrícula y el schedule
-        self.grid = SingleGrid(height+1, width+1, torus=False)  # Crear una cuadrícula sin torus
+        self.grid = MultiGrid(height+1, width+1, torus=False)  # Crear una cuadrícula sin torus
         self.schedule = RandomActivation(self)  # Crear un scheduler para la activación aleatoria de agentes
 
         # Configurar parámetros del juego
